@@ -10,17 +10,16 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
-import net.minecraft.world.entity.SpawnPlacementType;
+import net.minecraft.world.entity.SpawnPlacementTypes;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.level.GameRules;
-import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
 /**
  * Wave spawn engine. While a wave runs it keeps horde pressure on every player using
- * vanilla's own natural-spawn placement rules ({@link NaturalSpawner#isSpawnPositionOk}),
+ * vanilla's own natural-spawn placement rules ({@link SpawnPlacementTypes#ON_GROUND}),
  * but with two apocalypse twists: it also works in full daylight, and zombies spawn even
  * at high noon — exactly like the design brief demands.
  *
@@ -117,7 +116,7 @@ public final class WaveSpawner {
         if (!floor.isFaceSturdy(level, below, Direction.UP)) return false;
 
         // the genuine vanilla placement predicate (collision, space, fluids…)
-        if (!NaturalSpawner.isSpawnPositionOk(SpawnPlacementType.ON_GROUND, level, pos, EntityType.ZOMBIE)) return false;
+        if (!SpawnPlacementTypes.ON_GROUND.isSpawnPositionOk(level, pos, EntityType.ZOMBIE)) return false;
 
         // mid-wave the sun is no longer a shield: daylight spawns are allowed by design
         if (!ZTConfig.S_DAYLIGHT_SPAWN.get() && level.getMaxLocalRawBrightness(pos) > 0) return false;
