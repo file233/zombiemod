@@ -109,6 +109,10 @@ Mọi con số "chuẩn đặc tả" là **mặc định được ghim sẵn**, 
 ```
 
 CI (GitHub Actions) tự build & phát hành JAR tại mục **Releases** của repo.
+Workflow đóng gói sẵn tại `ci/build.yml.template`. Khi nào token GitHub được cấp quyền
+`workflows` (kết nối lại GitHub trong Arena), chỉ cần đổi tên/di chuyển file về
+`.github/workflows/build.yml` là pipeline tự chạy: build JAR, upload artifact và đính kèm
+JAR vào release theo tag.
 
 ---
 
