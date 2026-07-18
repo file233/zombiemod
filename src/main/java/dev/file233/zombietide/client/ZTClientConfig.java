@@ -22,6 +22,9 @@ public final class ZTClientConfig {
     public static final ModConfigSpec.BooleanValue OVERLAY_ENABLED;
     public static final ModConfigSpec.DoubleValue OVERLAY_INTENSITY;
     public static final ModConfigSpec.DoubleValue OVERLAY_MAX_ALPHA;
+    public static final ModConfigSpec.DoubleValue OVERLAY_FADE_PER_TICK;
+    public static final ModConfigSpec.IntValue OVERLAY_BLUR_PASSES;
+    public static final ModConfigSpec.BooleanValue OVERLAY_SPLATTER_VARIANTS;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -40,12 +43,22 @@ public final class ZTClientConfig {
         b.pop();
 
         b.translation("zombietide.configuration.client.damageOverlay").push("damageOverlay");
-        OVERLAY_ENABLED = b.comment("Red fog/blur on your screen when you take heavy damage.",
-                "Màn hình mờ đỏ khi bị sát thương mạnh.").translation("zombietide.configuration.client.enabled").define("enabled", true);
-        OVERLAY_INTENSITY = b.comment("How strongly damage feeds the red fog.",
+        OVERLAY_ENABLED = b.comment("Blood splatter + red blur on your screen when you take heavy damage.",
+                "Máu bắn lên màn hình + mờ đỏ khi bị sát thương mạnh.").translation("zombietide.configuration.client.enabled").define("enabled", true);
+        OVERLAY_INTENSITY = b.comment("How strongly damage feeds the blood overlay.",
                 "Độ mạnh hiệu ứng.").translation("zombietide.configuration.client.intensity").defineInRange("intensity", 1.0D, 0.1D, 4.0D);
-        OVERLAY_MAX_ALPHA = b.comment("Strongest opacity the red fog can reach (1 = fully blinding).",
-                "Độ đục tối đa.").translation("zombietide.configuration.client.maxAlpha").defineInRange("maxAlpha", 0.65D, 0.1D, 1.0D);
+        OVERLAY_MAX_ALPHA = b.comment("Strongest opacity the blood overlay can reach (1 = fully blinding).",
+                "Độ đục tối đa.").translation("zombietide.configuration.client.maxAlpha").defineInRange("maxAlpha", 0.82D, 0.1D, 1.0D);
+        OVERLAY_FADE_PER_TICK = b.comment("How fast the blood drains off your vision (per tick).",
+                "Lower = the screen stays bloodied longer.",
+                "Tốc độ vệt máu nhạt dần mỗi tick (nhỏ = máu bám lâu hơn).")
+                .translation("zombietide.configuration.client.fadePerTick").defineInRange("fadePerTick", 0.004D, 0.0005D, 0.05D);
+        OVERLAY_BLUR_PASSES = b.comment("Softness passes of the blood blur (1 = sharp splatter only, 4 = very foggy).",
+                "Số lớp mờ xếp chồng (càng cao càng mờ nhòe).")
+                .translation("zombietide.configuration.client.blurPasses").defineInRange("blurPasses", 3, 1, 4);
+        OVERLAY_SPLATTER_VARIANTS = b.comment("Pick a random blood-splatter pattern every hit.",
+                "Mỗi cú đánh hiện một họa tiết máu ngẫu nhiên.")
+                .translation("zombietide.configuration.client.splatterVariants").define("splatterVariants", true);
         b.pop();
 
         SPEC = b.build();

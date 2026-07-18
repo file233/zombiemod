@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.0 — "They Even Hunt Builders" (2026-07-19)
+
+### Thêm mới
+- **Bám theo ngưởi chơi Sáng tạo**: goal săn, bộ tai và engine sinh đều tự kiểm soát bộ lọc creative/spectator (vanilla hard-drop mục tiêu creative) — công tắc `targeting.targetCreativePlayers` (mặc định bật), `targetSpectators`, `spawning.pressureCreativePlayers`.
+- **Trần máu zombie = ngưởi chơi + 5 tim** (mặc định): `zombies.healthBaseHearts=10`, `healthPerWaveHearts=0.25`, `healthMaxHeartsAbovePlayer=5` — zombie trâu dần theo đợt nhưng không bao giờ quá 15 tim với ngưởi chơi vanilla.
+- **Chỉnh khoảng cách & độ dài TỪNG ĐỢT một**:
+  - config `waves.intervalOverrides` / `durationOverrides` (định dạng `"đợt=giây"`),
+  - lệnh `/zombietide interval [n] [giây|clear]` và `/zombietide duration [n] [giây|clear]` — lưu vào file config, **áp dụng ngay** vào đếm ngược đang chạy (giữ tỉ lệ thởi gian còn lại),
+  - công thức nghỉ tăng trưởng theo đợt `waves.calmMinutesPerWave`.
+- **Máu bắn lên màn hình (mờ hơn)**: 3 họa tiết máu bắn (texture 512² sinh riêng) chọn ngẫu nhiên mỗi cú đánh + stack nhiều pass mờ xếp chồng → cảm giác màn hình nhòe máu; độ đục tối đa mặc định 0.82; thêm `fadePerTick`, `blurPasses`, `splatterVariants`.
+- `zombies.damagePerWaveHearts` (tăng sát thương theo đợt, vẫn kẹp trần), `waves.alarmPitch`, `effects.amplifier` (cấp hiệu ứng I→IV).
+
+### Sửa / cải tiến
+- Fix tên API Mojmap 1.21.1: `SpawnPlacementTypes.ON_GROUND.isSpawnPositionOk(...)` (vị trí sinh theo đúng predicate vanilla 1.21.1) và `Explosion#center()` (vị trí vụ nổ cho SenseEngine).
+- Nâng tổng số khóa config: ~75 (COMMON + CLIENT), tất cả vẫn chỉnh trong game hoặc bằng lệnh.
+
+### Kỹ thuật
+- `ZTConfig.isHuntable(Player)` — nguồn sự thật duy nhất cho quyền bị săn; ZTHuntPlayerGoal tự override `findTarget()` + `canContinueToUse()` để không bị vanilla rớt mục tiêu creative.
+- WaveManager: `retuneCalm()` / `retuneActive(wave)` — chỉnh thởi gian theo tỉ lệ, có đồng bộ HUD ngay.
+
 ## 1.0.0 — "The Tide Rises" (2026-07-18)
 
 Bản phát hành đầu tiên của **ZombieTide** cho Minecraft 1.21.1 (NeoForge 21.1.x).

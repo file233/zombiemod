@@ -56,9 +56,13 @@ public final class ZTConfig {
     public static final ModConfigSpec.DoubleValue FIRST_WAVE_MINUTES;
     public static final ModConfigSpec.DoubleValue WAVE_INCREMENT_MINUTES;
     public static final ModConfigSpec.DoubleValue CALM_MINUTES;
+    public static final ModConfigSpec.DoubleValue CALM_MINUTES_PER_WAVE;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> INTERVAL_OVERRIDES;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> DURATION_OVERRIDES;
     public static final ModConfigSpec.DoubleValue ALARM_SECONDS;
     public static final ModConfigSpec.ConfigValue<String> ALARM_SOUND;
     public static final ModConfigSpec.DoubleValue ALARM_VOLUME;
+    public static final ModConfigSpec.DoubleValue ALARM_PITCH;
     public static final ModConfigSpec.ConfigValue<AfterLastWave> AFTER_LAST_WAVE;
     public static final ModConfigSpec.BooleanValue CHAT_ANNOUNCE;
     public static final ModConfigSpec.BooleanValue TITLE_ANNOUNCE;
@@ -73,6 +77,10 @@ public final class ZTConfig {
     public static final ModConfigSpec.DoubleValue Z_FOLLOW_WAVE_BONUS;
     public static final ModConfigSpec.BooleanValue Z_HUNT_WITHOUT_SIGHT;
     public static final ModConfigSpec.DoubleValue Z_MAX_DAMAGE_HEARTS;
+    public static final ModConfigSpec.DoubleValue Z_DAMAGE_PER_WAVE_HEARTS;
+    public static final ModConfigSpec.DoubleValue Z_HEALTH_BASE_HEARTS;
+    public static final ModConfigSpec.DoubleValue Z_HEALTH_PER_WAVE_HEARTS;
+    public static final ModConfigSpec.DoubleValue Z_HEALTH_MAX_ABOVE_PLAYER;
     public static final ModConfigSpec.DoubleValue Z_KBR_PER_WAVE;
     public static final ModConfigSpec.IntValue Z_REINFORCEMENT_FROM_WAVE;
     public static final ModConfigSpec.DoubleValue Z_REINFORCEMENT_PER_WAVE;
@@ -97,6 +105,10 @@ public final class ZTConfig {
     public static final ModConfigSpec.DoubleValue Z_NON_ZOMBIE_KEEP_CHANCE;
     public static final ModConfigSpec.BooleanValue Z_CONVERT_VARIANTS;
 
+    // targeting
+    public static final ModConfigSpec.BooleanValue T_CREATIVE;
+    public static final ModConfigSpec.BooleanValue T_SPECTATORS;
+
     // spawning
     public static final ModConfigSpec.BooleanValue S_ENABLED;
     public static final ModConfigSpec.IntValue S_INTERVAL_TICKS;
@@ -110,11 +122,13 @@ public final class ZTConfig {
     public static final ModConfigSpec.BooleanValue S_BOOST_NATURAL_PLACEMENT;
     public static final ModConfigSpec.DoubleValue S_SURFACE_CHANCE;
     public static final ModConfigSpec.BooleanValue S_IGNORE_GAMERULE;
+    public static final ModConfigSpec.BooleanValue S_PRESSURE_CREATIVE;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> S_DIMENSIONS;
 
     // effects
     public static final ModConfigSpec.DoubleValue E_PROC_CHANCE;
     public static final ModConfigSpec.BooleanValue E_ONLY_DURING_WAVES;
+    public static final ModConfigSpec.IntValue E_AMPLIFIER;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> E_LIST;
 
     static {
@@ -146,6 +160,23 @@ public final class ZTConfig {
                 "Thởi gian bình yên giữa hai đợt, tính bằng phút.")
                 .translation("zombietide.configuration.calmMinutes")
                 .defineInRange("calmMinutes", 10.0D, 0.25D, 10080.0D);
+        CALM_MINUTES_PER_WAVE = b.comment("Calm-gap growth per wave (minutes). 0 = every gap is calmMinutes;",
+                "negative values shrink the gap, positive makes later breaks longer.",
+                "Độ tăng khoảng nghỉ theo số đợt (phút). 0 = khoảng nghỉ luôn bằng nhau.")
+                .translation("zombietide.configuration.calmMinutesPerWave")
+                .defineInRange("calmMinutesPerWave", 0.0D, -10.0D, 120.0D);
+        INTERVAL_OVERRIDES = b.comment("Per-wave calm-gap overrides, format: wave=seconds (e.g. \"5=900\", \"10=300\").",
+                "These exact values beat the formula for the rest before that specific wave.",
+                "Editable live via /zombietide interval <wave> <seconds|clear>.",
+                "Chỉnh khoảng nghỉ RIÊNG cho từng đợt, dạng đợt=giây (vd \"5=900\").")
+                .translation("zombietide.configuration.intervalOverrides")
+                .defineListAllowEmpty("intervalOverrides", List::of, o -> o instanceof String s && s.matches("\\d+\\s*[=:]\\s*\\d+"));
+        DURATION_OVERRIDES = b.comment("Per-wave DURATION overrides, format: wave=seconds (e.g. \"20=1800\").",
+                "These exact values beat the firstWave/+perWave formula for that specific wave.",
+                "Editable live via /zombietide duration <wave> <seconds|clear>.",
+                "Chỉnh thởi lượng RIÊNG cho từng đợt, dạng đợt=giây (vd \"20=1800\").")
+                .translation("zombietide.configuration.durationOverrides")
+                .defineListAllowEmpty("durationOverrides", List::of, o -> o instanceof String s && s.matches("\\d+\\s*[=:]\\s*\\d+"));
         ALARM_SECONDS = b.comment("Seconds of alarm sirene before a wave begins. Default 5.",
                 "Số giây còi báo động trước khi đợt bắt đầu. Mặc định 5.")
                 .translation("zombietide.configuration.alarmSeconds")
@@ -158,6 +189,10 @@ public final class ZTConfig {
                 "Âm lượng báo động.")
                 .translation("zombietide.configuration.alarmVolume")
                 .defineInRange("alarmVolume", 1.0D, 0.1D, 4.0D);
+        ALARM_PITCH = b.comment("Alarm pitch (1.0 = the sirene as recorded).",
+                "Cao độ của còi báo động (1.0 = nguyên bản).")
+                .translation("zombietide.configuration.alarmPitch")
+                .defineInRange("alarmPitch", 1.0D, 0.5D, 2.0D);
         AFTER_LAST_WAVE = b.comment("After the final wave: CONTINUE = endless max-intensity waves, LOOP = restart from wave 1, STOP = the apocalypse is survived.",
                 "Sau đợt cuối: CONTINUE (lặp đợt cuối vô hạn) / LOOP (quay lại đợt 1) / STOP (dừng hẳn).")
                 .translation("zombietide.configuration.afterLastWave")
@@ -206,6 +241,23 @@ public final class ZTConfig {
                 "Sát thương tối đa của zombie lên ngưởi chơi, tính theo TIM. Mặc định 2 tim.")
                 .translation("zombietide.configuration.maxDamageHearts")
                 .defineInRange("maxDamageHearts", 2.0D, 0.5D, 20.0D);
+        Z_DAMAGE_PER_WAVE_HEARTS = b.comment("Damage growth per wave, in HEARTS (still clamped by maxDamageHearts). Default 0 = flat.",
+                "Sát thương tăng thêm mỗi đợt (TIM), vẫn không vượt trần maxDamageHearts.")
+                .translation("zombietide.configuration.damagePerWaveHearts")
+                .defineInRange("damagePerWaveHearts", 0.0D, 0.0D, 2.0D);
+        Z_HEALTH_BASE_HEARTS = b.comment("Zombie health at wave 0, in HEARTS (vanilla = 10 hearts).",
+                "Máu zombie lúc đầu, tính theo TIM (vanilla = 10 tim).")
+                .translation("zombietide.configuration.healthBaseHearts")
+                .defineInRange("healthBaseHearts", 10.0D, 1.0D, 200.0D);
+        Z_HEALTH_PER_WAVE_HEARTS = b.comment("Health growth per wave, in HEARTS (0.25 = +1 heart every 4 waves).",
+                "Máu tăng thêm mỗi đợt (TIM).")
+                .translation("zombietide.configuration.healthPerWaveHearts")
+                .defineInRange("healthPerWaveHearts", 0.25D, 0.0D, 10.0D);
+        Z_HEALTH_MAX_ABOVE_PLAYER = b.comment("HARD CAP: a zombie may have AT MOST this many HEARTS above the nearest player's max health.",
+                "Default 5 hearts → with a vanilla 10-heart player the beefiest zombie has 15 hearts.",
+                "Trần máu zombie = máu ngưởi chơi + giá trị này (TIM). Mặc định 5 tim → zombie trâu nhất 15 tim.")
+                .translation("zombietide.configuration.healthMaxHeartsAbovePlayer")
+                .defineInRange("healthMaxHeartsAbovePlayer", 5.0D, 0.0D, 100.0D);
         Z_KBR_PER_WAVE = b.comment("Knockback resistance gained per wave (during waves).",
                 "Kháng knockback tăng theo đợt.")
                 .translation("zombietide.configuration.knockbackResistancePerWave")
@@ -273,6 +325,19 @@ public final class ZTConfig {
                 "Biến mọi biến thể thành zombie thường khi trong đợt.").translation("zombietide.configuration.convertVariants").define("convertVariants", true);
         b.pop();
 
+        // ------------------------------------------------------------------ targeting
+        b.translation("zombietide.configuration.targeting").push("targeting");
+        T_CREATIVE = b.comment("Zombies track and chase players in CREATIVE mode too (they still cannot hurt them).",
+                "Even builders get stalked by the horde.",
+                "Zombie vẫn bám theo ngưởi chơi ở chế độ SÁNG TẠO (dù không gây sát thương được).")
+                .translation("zombietide.configuration.targetCreativePlayers")
+                .define("targetCreativePlayers", true);
+        T_SPECTATORS = b.comment("Zombies may also home in on players in SPECTATOR mode (spooky).",
+                "Zombie còn bám cả ngưởi chơi ở chế độ THEO DÕI (spectator).")
+                .translation("zombietide.configuration.targetSpectators")
+                .define("targetSpectators", false);
+        b.pop();
+
         // ------------------------------------------------------------------ spawning
         b.translation("zombietide.configuration.spawning").push("spawning");
         S_ENABLED = b.comment("Enable the wave spawn engine (keeps horde pressure up, even by day).",
@@ -299,6 +364,10 @@ public final class ZTConfig {
                 "Tỉ lệ thử sinh trên mặt đất.").translation("zombietide.configuration.surfaceChance").defineInRange("surfaceChance", 0.6D, 0.0D, 1.0D);
         S_IGNORE_GAMERULE = b.comment("Spawn even when the doMobSpawning gamerule is false.",
                 "Bỏ qua gamerule doMobSpawning.").translation("zombietide.configuration.ignoreDoMobSpawningRule").define("ignoreDoMobSpawningRule", false);
+        S_PRESSURE_CREATIVE = b.comment("Also besiege players in creative mode during waves (spawner treats them as anchors).",
+                "Khi trong đợt, zombie vẫn xuất hiện vây quanh ngưởi chơi ở chế độ sáng tạo.")
+                .translation("zombietide.configuration.pressureCreativePlayers")
+                .define("pressureCreativePlayers", true);
         S_DIMENSIONS = b.comment("Dimensions where waves and the spawn engine apply.",
                 "Các chiều (dimension) áp dụng hệ thống đợt.").translation("zombietide.configuration.dimensions").defineListAllowEmpty("dimensions",
                 () -> List.of("minecraft:overworld"), o -> o instanceof String s && ResourceLocation.tryParse(s) != null);
@@ -310,6 +379,8 @@ public final class ZTConfig {
                 "Tỉ lệ nhận hiệu ứng xấu khi bị zombie đánh.").translation("zombietide.configuration.procChance").defineInRange("procChance", 0.35D, 0.0D, 1.0D);
         E_ONLY_DURING_WAVES = b.comment("Apply harmful effects only while a wave is running.",
                 "Chỉ gây hiệu ứng khi trong đợt.").translation("zombietide.configuration.onlyDuringWaves").define("onlyDuringWaves", false);
+        E_AMPLIFIER = b.comment("Amplifier of applied effects (0 = level I, 1 = level II, ...).",
+                "Cấp độ hiệu ứng (0 = cấp I, 1 = cấp II).").translation("zombietide.configuration.amplifier").defineInRange("amplifier", 0, 0, 3);
         E_LIST = b.comment(
                 "Effect pool. Format: effect_id|min_seconds|max_seconds|min_wave|weight",
                 "id: minecraft vanilla effect (slowness, weakness, poison, blindness, nausea, ...),",
@@ -334,14 +405,54 @@ public final class ZTConfig {
     // ------------------------------------------------------------------ live helpers
     public static boolean enabled() { return ENABLED.get(); }
 
-    /** Wave duration in ticks for the given wave number (1-based). */
+    /** Wave duration in ticks for the given wave number (1-based). Per-wave override wins. */
     public static long waveDurationTicks(int wave) {
+        Integer override = durationOverrides().get(wave);
+        if (override != null) return Math.max(100L, override * 20L);
         double minutes = FIRST_WAVE_MINUTES.get() + Math.max(0, wave - 1) * WAVE_INCREMENT_MINUTES.get();
         return Math.max(100L, Math.round(minutes * 1200.0D));
     }
 
-    public static long calmTicks() {
-        return Math.max(100L, Math.round(CALM_MINUTES.get() * 1200.0D));
+    /** Calm gap in ticks before the given wave number arrives. Per-wave override wins. */
+    public static long calmTicks(int nextWave) {
+        Integer override = intervalOverrides().get(nextWave);
+        if (override != null) return Math.max(100L, override * 20L);
+        double minutes = CALM_MINUTES.get() + Math.max(0, nextWave - 1) * CALM_MINUTES_PER_WAVE.get();
+        return Math.max(100L, Math.max(120L, Math.round(minutes * 1200.0D)));
+    }
+
+    /** How the calm gap before {@code wave} is computed: "override" or "formula". */
+    public static String calmSource(int wave) {
+        return intervalOverrides().containsKey(wave) ? "override" : "formula";
+    }
+
+    /** How the duration of {@code wave} is computed: "override" or "formula". */
+    public static String durationSource(int wave) {
+        return durationOverrides().containsKey(wave) ? "override" : "formula";
+    }
+
+    /** Zombie hunting whitelist for players (creative/spectator are opt-in via config). */
+    public static boolean isHuntable(net.minecraft.world.entity.player.Player player) {
+        if (!player.isAlive()) return false;
+        if (player.isSpectator()) return T_SPECTATORS.get();
+        if (player.isCreative()) return T_CREATIVE.get();
+        return true;
+    }
+
+    /**
+     * Zombie max health for a wave, in health points. Grows linearly with the wave count,
+     * but is hard-capped at {@code playerMaxHealth + healthMaxHeartsAbovePlayer} hearts —
+     * by design a zombie may only ever be 5 hearts beefier than its victim.
+     */
+    public static double zombieHealth(int wave, double playerMaxHealth) {
+        double built = (Z_HEALTH_BASE_HEARTS.get() + Math.max(0, wave) * Z_HEALTH_PER_WAVE_HEARTS.get()) * 2.0D;
+        double cap = Math.max(2.0D, playerMaxHealth) + Z_HEALTH_MAX_ABOVE_PLAYER.get() * 2.0D;
+        return Math.max(2.0D, Math.min(built, cap));
+    }
+
+    /** Zombie attack damage attribute target for a wave (still below maxZombieDamage). */
+    public static double zombieAttackDamage(int wave) {
+        return Math.min(maxZombieDamage(), 3.0D + Math.max(0, wave) * Z_DAMAGE_PER_WAVE_HEARTS.get() * 2.0D);
     }
 
     public static int alarmTicks() {
@@ -385,6 +496,8 @@ public final class ZTConfig {
     private static volatile Set<Block> breakBlacklistCache = null;
     private static volatile Set<ResourceKey<Level>> dimensionCache = null;
     private static volatile List<EffectRoll> effectRollCache = null;
+    private static volatile Map<Integer, Integer> intervalOverrideCache = null;
+    private static volatile Map<Integer, Integer> durationOverrideCache = null;
 
     public static void onConfigLoaded(ModConfigEvent.Loading e) { invalidateCaches(); }
 
@@ -395,6 +508,68 @@ public final class ZTConfig {
         breakBlacklistCache = null;
         dimensionCache = null;
         effectRollCache = null;
+        intervalOverrideCache = null;
+        durationOverrideCache = null;
+    }
+
+    /** Per-wave calm-gap overrides (wave → seconds). */
+    public static Map<Integer, Integer> intervalOverrides() {
+        Map<Integer, Integer> c = intervalOverrideCache;
+        if (c == null) intervalOverrideCache = c = parseOverrides(INTERVAL_OVERRIDES.get(), "intervalOverrides");
+        return c;
+    }
+
+    /** Per-wave duration overrides (wave → seconds). */
+    public static Map<Integer, Integer> durationOverrides() {
+        Map<Integer, Integer> c = durationOverrideCache;
+        if (c == null) durationOverrideCache = c = parseOverrides(DURATION_OVERRIDES.get(), "durationOverrides");
+        return c;
+    }
+
+    private static Map<Integer, Integer> parseOverrides(List<? extends String> raw, String keyName) {
+        Map<Integer, Integer> map = new LinkedHashMap<>();
+        for (String entry : raw) {
+            String[] parts = entry.trim().split("\\s*[=:]\\s*");
+            if (parts.length != 2) { LOGGER.warn("Bad {} entry '{}', expected wave=seconds", keyName, entry); continue; }
+            try {
+                int wave = Integer.parseInt(parts[0].trim());
+                int seconds = Integer.parseInt(parts[1].trim());
+                if (wave < 1 || seconds < 5) { LOGGER.warn("Bad {} entry '{}': wave>=1 and seconds>=5 required", keyName, entry); continue; }
+                map.put(wave, seconds);
+            } catch (NumberFormatException ex) {
+                LOGGER.warn("Bad {} entry '{}': not a number", keyName, entry);
+            }
+        }
+        return Collections.unmodifiableMap(map);
+    }
+
+    /** Sets/clears a per-wave override and persists it. Applies immediately to the live cycle. */
+    public static synchronized void putIntervalOverride(int wave, @Nullable Integer seconds) {
+        putOverride(INTERVAL_OVERRIDES, wave, seconds);
+    }
+
+    /** Sets/clears a per-wave duration override and persists it. Applies immediately. */
+    public static synchronized void putDurationOverride(int wave, @Nullable Integer seconds) {
+        putOverride(DURATION_OVERRIDES, wave, seconds);
+    }
+
+    private static void putOverride(ModConfigSpec.ConfigValue<List<? extends String>> entry, int wave, @Nullable Integer seconds) {
+        Map<Integer, Integer> map = new LinkedHashMap<>();
+        for (String rawEntry : entry.get()) {
+            String[] parts = rawEntry.trim().split("\\s*[=:]\\s*");
+            if (parts.length == 2) {
+                try {
+                    map.put(Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim()));
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        if (seconds == null) map.remove(wave);
+        else map.put(wave, Math.max(5, seconds));
+        List<String> out = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> e : map.entrySet()) out.add(e.getKey() + "=" + e.getValue());
+        entry.set(out);
+        invalidateCaches();
+        SPEC.save();
     }
 
     public static List<Item> heldBlocks() {
@@ -488,9 +663,11 @@ public final class ZTConfig {
         m.put("waves.firstWaveMinutes", new BridgeEntry(FIRST_WAVE_MINUTES, "double"));
         m.put("waves.waveIncrementMinutes", new BridgeEntry(WAVE_INCREMENT_MINUTES, "double"));
         m.put("waves.calmMinutes", new BridgeEntry(CALM_MINUTES, "double"));
+        m.put("waves.calmMinutesPerWave", new BridgeEntry(CALM_MINUTES_PER_WAVE, "double"));
         m.put("waves.alarmSeconds", new BridgeEntry(ALARM_SECONDS, "double"));
         m.put("waves.alarmSound", new BridgeEntry(ALARM_SOUND, "string"));
         m.put("waves.alarmVolume", new BridgeEntry(ALARM_VOLUME, "double"));
+        m.put("waves.alarmPitch", new BridgeEntry(ALARM_PITCH, "double"));
         m.put("waves.afterLastWave", new BridgeEntry(AFTER_LAST_WAVE, "enum:AfterLastWave"));
         m.put("waves.chatAnnounce", new BridgeEntry(CHAT_ANNOUNCE, "boolean"));
         m.put("waves.titleAnnounce", new BridgeEntry(TITLE_ANNOUNCE, "boolean"));
@@ -503,6 +680,10 @@ public final class ZTConfig {
         m.put("zombies.waveFollowBonus", new BridgeEntry(Z_FOLLOW_WAVE_BONUS, "double"));
         m.put("zombies.huntWithoutSight", new BridgeEntry(Z_HUNT_WITHOUT_SIGHT, "boolean"));
         m.put("zombies.maxDamageHearts", new BridgeEntry(Z_MAX_DAMAGE_HEARTS, "double"));
+        m.put("zombies.damagePerWaveHearts", new BridgeEntry(Z_DAMAGE_PER_WAVE_HEARTS, "double"));
+        m.put("zombies.healthBaseHearts", new BridgeEntry(Z_HEALTH_BASE_HEARTS, "double"));
+        m.put("zombies.healthPerWaveHearts", new BridgeEntry(Z_HEALTH_PER_WAVE_HEARTS, "double"));
+        m.put("zombies.healthMaxHeartsAbovePlayer", new BridgeEntry(Z_HEALTH_MAX_ABOVE_PLAYER, "double"));
         m.put("zombies.knockbackResistancePerWave", new BridgeEntry(Z_KBR_PER_WAVE, "double"));
         m.put("zombies.reinforcementFromWave", new BridgeEntry(Z_REINFORCEMENT_FROM_WAVE, "int"));
         m.put("zombies.reinforcementPerWave", new BridgeEntry(Z_REINFORCEMENT_PER_WAVE, "double"));
@@ -524,6 +705,8 @@ public final class ZTConfig {
         m.put("zombies.variantKeepChance", new BridgeEntry(Z_VARIANT_KEEP_CHANCE, "double"));
         m.put("zombies.nonZombieKeepChance", new BridgeEntry(Z_NON_ZOMBIE_KEEP_CHANCE, "double"));
         m.put("zombies.convertVariants", new BridgeEntry(Z_CONVERT_VARIANTS, "boolean"));
+        m.put("targeting.targetCreativePlayers", new BridgeEntry(T_CREATIVE, "boolean"));
+        m.put("targeting.targetSpectators", new BridgeEntry(T_SPECTATORS, "boolean"));
         m.put("spawning.enabled", new BridgeEntry(S_ENABLED, "boolean"));
         m.put("spawning.intervalTicks", new BridgeEntry(S_INTERVAL_TICKS, "int"));
         m.put("spawning.attemptsPerCycle", new BridgeEntry(S_ATTEMPTS_PER_CYCLE, "int"));
@@ -536,8 +719,10 @@ public final class ZTConfig {
         m.put("spawning.boostNaturalPlacement", new BridgeEntry(S_BOOST_NATURAL_PLACEMENT, "boolean"));
         m.put("spawning.surfaceChance", new BridgeEntry(S_SURFACE_CHANCE, "double"));
         m.put("spawning.ignoreDoMobSpawningRule", new BridgeEntry(S_IGNORE_GAMERULE, "boolean"));
+        m.put("spawning.pressureCreativePlayers", new BridgeEntry(S_PRESSURE_CREATIVE, "boolean"));
         m.put("effects.procChance", new BridgeEntry(E_PROC_CHANCE, "double"));
         m.put("effects.onlyDuringWaves", new BridgeEntry(E_ONLY_DURING_WAVES, "boolean"));
+        m.put("effects.amplifier", new BridgeEntry(E_AMPLIFIER, "int"));
         BRIDGE = Collections.unmodifiableMap(m);
     }
 

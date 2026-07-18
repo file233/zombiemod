@@ -64,7 +64,8 @@ public final class CombatRules {
         if (holder == null) return;
         int span = Math.max(0, chosen.maxSec() - chosen.minSec());
         int seconds = chosen.minSec() + (span > 0 ? rand.nextInt(span + 1) : 0);
-        player.addEffect(new MobEffectInstance(holder, seconds * 20, 0, false, true, true));
+        int amplifier = Math.min(3, Math.max(0, ZTConfig.E_AMPLIFIER.get()));
+        player.addEffect(new MobEffectInstance(holder, seconds * 20, amplifier, false, true, true));
     }
 
     /** Sun is not a weapon while the tide is in. */

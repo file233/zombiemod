@@ -39,7 +39,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  *
  * <p>Timeline per cycle (all values configurable):
  * <pre>
- *  calmMinutes of peace  ──[alarmSeconds of sirene]──▶  wave #N (8 + 2·(N-1) minutes)  ──▶  calmMinutes …
+ *  calm before wave N (formula or per-wave override)  ──[alarmSeconds of sirene]──▶  wave #N  ──▶  calm …
  * </pre>
  * Default: 50 waves; behaviour after wave 50 is governed by {@code waves.afterLastWave}.
  */
@@ -91,7 +91,7 @@ public final class WaveManager {
         this.server = server;
         this.data = server.overworld().getDataStorage().computeIfAbsent(WaveData.factory(), WaveData.DATA_NAME);
         if (data.phaseTotal <= 0) {
-            data.phaseTotal = ZTConfig.calmTicks();
+            data.phaseTotal = ZTConfig.calmTicks(data.wave + 1);
             data.ticksRemaining = data.phaseTotal;
         }
     }
@@ -186,7 +186,7 @@ public final class WaveManager {
     private void endWave() {
         data.completed = Math.max(data.completed, data.wave);
         data.phase = WaveData.PHASE_IDLE;
-        data.phaseTotal = ZTConfig.calmTicks();
+        data.phaseTotal = ZTConfig.calmTicks(data.wave + 1);
         data.ticksRemaining = data.phaseTotal;
         data.setDirty();
 
@@ -211,7 +211,8 @@ public final class WaveManager {
         for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
             if (!ZTConfig.dimensionAllowed(sp.level().dimension())) continue;
             // played at each player's own position so everyone hears the full sirene
-            sp.level().playSound(null, sp.getX(), sp.getY(), sp.getZ(), sound, SoundSource.HOSTILE, volume, 1.0F);
+            float pitch = (float) ZTConfig.ALARM_PITCH.get().doubleValue();
+            sp.level().playSound(null, sp.getX(), sp.getY(), sp.getZ(), sound, SoundSource.HOSTILE, volume, pitch);
         }
         if (ZTConfig.CHAT_ANNOUNCE.get()) {
             broadcast(Component.translatable("message.zombietide.incoming", next, ZTConfig.MAX_WAVES.get())
@@ -262,7 +263,7 @@ public final class WaveManager {
         data.finished = false;
         if (data.phase != WaveData.PHASE_ACTIVE) {
             data.phase = WaveData.PHASE_IDLE;
-            data.phaseTotal = ZTConfig.calmTicks();
+            data.phaseTotal = ZTConfig.calmTicks(Math.max(1, wave));
             data.ticksRemaining = data.phaseTotal;
         }
         return triggerWave(instant);
@@ -273,7 +274,7 @@ public final class WaveManager {
         data.wave = 0;
         data.completed = 0;
         data.phase = WaveData.PHASE_IDLE;
-        data.phaseTotal = ZTConfig.calmTicks();
+        data.phaseTotal = ZTConfig.calmTicks(1);
         data.ticksRemaining = data.phaseTotal;
         data.paused = false;
         data.finished = false;
@@ -287,6 +288,37 @@ public final class WaveManager {
         data.paused = paused;
         data.setDirty();
         syncAll();
+    }
+
+    /** Re-derives the running calm countdown after a per-wave interval edit (keeps elapsed progress). */
+    public void retuneCalm() {
+        if (data.phase != WaveData.PHASE_IDLE) return;
+        long newTotal = ZTConfig.calmTicks(data.wave + 1);
+        if (newTotal != data.phaseTotal) {
+            if (data.phaseTotal > 0) {
+                // keep the same *fraction* of the break left, so edits feel natural
+                double left = data.ticksRemaining / (double) data.phaseTotal;
+                data.ticksRemaining = Math.max(0L, Math.round(newTotal * left));
+            }
+            data.phaseTotal = newTotal;
+            data.setDirty();
+            syncAll();
+        }
+    }
+
+    /** Re-derives a running wave's countdown after a duration-override edit for that wave. */
+    public void retuneActive(int wave) {
+        if (data.phase != WaveData.PHASE_ACTIVE || data.wave != wave) return;
+        long newTotal = ZTConfig.waveDurationTicks(wave);
+        if (newTotal != data.phaseTotal) {
+            if (data.phaseTotal > 0) {
+                double left = data.ticksRemaining / (double) data.phaseTotal;
+                data.ticksRemaining = Math.max(0L, Math.round(newTotal * left));
+            }
+            data.phaseTotal = newTotal;
+            data.setDirty();
+            syncAll();
+        }
     }
 
     // ------------------------------------------------------------------ announce & sync

@@ -53,7 +53,7 @@ public final class SenseEngine {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if (!ZTConfig.enabled()) return;
         if ((player.tickCount & 7) != 2) return; // sampled at 2.5 Hz
-        if (player.isSpectator() || !player.isAlive()) return;
+        if (!ZTConfig.isHuntable(player)) return; // creative prey rustles too (if enabled)
 
         double loudness;
         if (player.isSprinting() && player.onGround()) loudness = LOUD_SPRINT;
@@ -152,7 +152,7 @@ public final class SenseEngine {
             zombie.setData(ZTAttachments.NOISE_COOLDOWN, now);
 
             if (zombie.getTarget() == null) {
-                if (culprit != null && culprit.isAlive() && !culprit.isSpectator() && !culprit.isCreative()) {
+                if (culprit != null && ZTConfig.isHuntable(culprit)) {
                     zombie.setTarget(culprit);
                     zombie.setAggressive(true);
                 } else {

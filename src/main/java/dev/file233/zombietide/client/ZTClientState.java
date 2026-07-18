@@ -20,8 +20,11 @@ public final class ZTClientState {
 
     public static boolean waveActive() { return phase == 1; }
 
-    // ---- trauma (red fog) ----
+    // ---- trauma (blood splatter) ----
+    public static final int SPLATTER_VARIANTS = 3;
     public static float trauma = 0.0F;
+    /** Which blood-splatter texture the latest hit threw at the screen. */
+    public static int splatterIndex = 0;
     private static float lastHealth = -1.0F;
 
     public static void apply(WaveSyncPayload payload) {
@@ -57,13 +60,18 @@ public final class ZTClientState {
             float lost = lastHealth - health;
             float max = Math.max(1.0F, player.getMaxHealth());
             trauma = Math.min(1.0F, trauma + (lost / max) * 1.8F * (float) ZTClientConfig.OVERLAY_INTENSITY.get().doubleValue());
+            // a fresh splash of blood for every hit
+            splatterIndex = ZTClientConfig.OVERLAY_SPLATTER_VARIANTS.get()
+                    ? player.getRandom().nextInt(SPLATTER_VARIANTS)
+                    : 0;
             lastHealth = health;
         } else {
             lastHealth = health;
         }
-        // slow recovery from the shock
+        // the blood slowly drains off your vision
         if (trauma > 0.0F) {
-            trauma = Math.max(0.0F, trauma - 0.006F);
+            float fade = (float) ZTClientConfig.OVERLAY_FADE_PER_TICK.get().doubleValue();
+            trauma = Math.max(0.0F, trauma - fade);
         }
     }
 }

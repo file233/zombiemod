@@ -27,6 +27,8 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
  *   start|summon [instant]  → ring the sirene (or skip it with "instant")
  *   end                     → finish the running wave now
  *   wave &lt;n&gt; [instant]     → jump to wave n
+ *   interval [n] [sec|clear]→ calm gap per wave: view effective, set or clear override
+ *   duration [n] [sec|clear]→ wave length per wave: view effective, set or clear override
  *   reset                   → back to day one (wave 1 countdown)
  *   pause / resume          → freeze / unfreeze the whole cycle
  *   config list [filter]    → every tunable key
@@ -55,6 +57,28 @@ public final class ZTCommands {
                 .then(Commands.argument("number", IntegerArgumentType.integer(1, 1000))
                         .executes(ctx -> wave(ctx, false))
                         .then(Commands.literal("instant").executes(ctx -> wave(ctx, true)))));
+
+        // per-wave calm gap: list / show / set / clear (persisted into waves.intervalOverrides)
+        var interval = Commands.literal("interval").executes(ctx -> overview(ctx, true));
+        interval.then(Commands.argument("wave", IntegerArgumentType.integer(1, 1000))
+                .executes(ctx -> showPerWave(ctx, true))
+                .then(Commands.literal("clear").requires(src -> src.hasPermission(2))
+                        .executes(ctx -> setPerWave(ctx, true, null)))
+                .then(Commands.argument("seconds", IntegerArgumentType.integer(5, 1209600))
+                        .requires(src -> src.hasPermission(2))
+                        .executes(ctx -> setPerWave(ctx, true, IntegerArgumentType.getInteger(ctx, "seconds")))));
+        root.then(interval);
+
+        // per-wave duration: list / show / set / clear (persisted into waves.durationOverrides)
+        var duration = Commands.literal("duration").executes(ctx -> overview(ctx, false));
+        duration.then(Commands.argument("wave", IntegerArgumentType.integer(1, 1000))
+                .executes(ctx -> showPerWave(ctx, false))
+                .then(Commands.literal("clear").requires(src -> src.hasPermission(2))
+                        .executes(ctx -> setPerWave(ctx, false, null)))
+                .then(Commands.argument("seconds", IntegerArgumentType.integer(5, 1209600))
+                        .requires(src -> src.hasPermission(2))
+                        .executes(ctx -> setPerWave(ctx, false, IntegerArgumentType.getInteger(ctx, "seconds")))));
+        root.then(duration);
 
         root.then(Commands.literal("reset").requires(src -> src.hasPermission(2))
                 .executes(ZTCommands::reset));
@@ -159,6 +183,69 @@ public final class ZTCommands {
         }
         send(ctx, ChatFormatting.YELLOW, Component.translatable("command.zombietide.wave", number));
         return 1;
+    }
+
+    // ------------------------------------------------------------------ per-wave interval / duration
+    private static int overview(CommandContext<CommandSourceStack> ctx, boolean calmGap) {
+        String key = calmGap ? "interval" : "duration";
+        var overrides = calmGap ? ZTConfig.intervalOverrides() : ZTConfig.durationOverrides();
+        if (calmGap) {
+            send(ctx, ChatFormatting.AQUA, Component.translatable("command.zombietide.interval.header",
+                    formatMinutes(ZTConfig.CALM_MINUTES.get()), formatMinutes(ZTConfig.CALM_MINUTES_PER_WAVE.get())));
+        } else {
+            send(ctx, ChatFormatting.AQUA, Component.translatable("command.zombietide.duration.header",
+                    formatMinutes(ZTConfig.FIRST_WAVE_MINUTES.get()), formatMinutes(ZTConfig.WAVE_INCREMENT_MINUTES.get())));
+        }
+        if (overrides.isEmpty()) {
+            send(ctx, ChatFormatting.GRAY, Component.translatable("command.zombietide." + key + ".none"));
+        } else {
+            for (var e : overrides.entrySet()) {
+                int wave = e.getKey();
+                long ticks = e.getValue() * 20L;
+                ctx.getSource().sendSuccess(() -> Component.translatable(
+                        "command.zombietide." + key + ".override_line", wave, ZTTime.formatRealtime(ticks))
+                        .withStyle(ChatFormatting.GOLD), false);
+            }
+        }
+        send(ctx, ChatFormatting.DARK_GRAY, Component.translatable("command.zombietide." + key + ".hint"));
+        return overrides.size() + 1;
+    }
+
+    private static int showPerWave(CommandContext<CommandSourceStack> ctx, boolean calmGap) {
+        int wave = IntegerArgumentType.getInteger(ctx, "wave");
+        long ticks = calmGap ? ZTConfig.calmTicks(wave) : ZTConfig.waveDurationTicks(wave);
+        String source = calmGap ? ZTConfig.calmSource(wave) : ZTConfig.durationSource(wave);
+        send(ctx, ChatFormatting.GREEN, Component.translatable(
+                "command.zombietide." + (calmGap ? "interval" : "duration") + ".show",
+                wave, ZTTime.formatRealtime(ticks), source));
+        return 1;
+    }
+
+    private static int setPerWave(CommandContext<CommandSourceStack> ctx, boolean calmGap, Integer seconds) {
+        int wave = IntegerArgumentType.getInteger(ctx, "wave");
+        String key = calmGap ? "interval" : "duration";
+        if (seconds == null) {
+            if (calmGap) ZTConfig.putIntervalOverride(wave, null);
+            else ZTConfig.putDurationOverride(wave, null);
+            send(ctx, ChatFormatting.YELLOW, Component.translatable("command.zombietide." + key + ".cleared", wave));
+        } else {
+            if (calmGap) ZTConfig.putIntervalOverride(wave, seconds);
+            else ZTConfig.putDurationOverride(wave, seconds);
+            send(ctx, ChatFormatting.GREEN, Component.translatable(
+                    "command.zombietide." + key + ".set_ok", wave, ZTTime.formatRealtime(seconds * 20L)));
+        }
+        // feel the surgery immediately: live-retune the countdown it concerns
+        WaveManager manager = WaveManager.get();
+        if (manager != null) {
+            if (calmGap) manager.retuneCalm();
+            else manager.retuneActive(wave);
+        }
+        return 1;
+    }
+
+    private static String formatMinutes(double minutes) {
+        String s = String.format(Locale.ROOT, "%.1f", minutes);
+        return s.endsWith(".0") ? s.substring(0, s.length() - 2) : s;
     }
 
     private static int reset(CommandContext<CommandSourceStack> ctx) {

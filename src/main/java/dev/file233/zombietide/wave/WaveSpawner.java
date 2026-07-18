@@ -39,6 +39,9 @@ public final class WaveSpawner {
             if (!ZTConfig.S_IGNORE_GAMERULE.get() && !level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)) continue;
             int interval = Math.max(5, ZTConfig.S_INTERVAL_TICKS.get());
             for (ServerPlayer player : level.players()) {
+                // spectators never attract the tide; creative players do when configured to
+                if (player.isSpectator() || !player.isAlive()) continue;
+                if (player.isCreative() && !ZTConfig.S_PRESSURE_CREATIVE.get()) continue;
                 // stagger players across ticks so we never scan everyone at once
                 int salt = (player.getUUID().hashCode() & 0x7FFFFFFF) % interval;
                 if (((level.getGameTime() + salt) % interval) != 0L) continue;

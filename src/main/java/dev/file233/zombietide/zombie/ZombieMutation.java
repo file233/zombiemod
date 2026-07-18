@@ -19,6 +19,7 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.RestrictSunGoal;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.monster.Zombie;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 
@@ -88,10 +89,31 @@ public final class ZombieMutation {
         setBase(zombie, Attributes.MOVEMENT_SPEED, ZTConfig.zombieSpeed(wave));
         setBase(zombie, Attributes.FOLLOW_RANGE, ZTConfig.followRange(wave, waveActive));
 
+        // ---- damage: grows with the waves, never breaches the 2-heart law ----
         AttributeInstance damage = zombie.getAttribute(Attributes.ATTACK_DAMAGE);
         double cap = ZTConfig.maxZombieDamage();
-        if (damage != null && damage.getBaseValue() > cap) {
-            damage.setBaseValue(cap);
+        if (damage != null) {
+            double desired = ZTConfig.zombieAttackDamage(wave);
+            if (damage.getBaseValue() > cap) damage.setBaseValue(cap);
+            else if (desired > damage.getBaseValue()) damage.setBaseValue(desired);
+        }
+
+        // ---- flesh: beefier every wave, but NEVER more than player + 5 hearts ----
+        AttributeInstance health = zombie.getAttribute(Attributes.MAX_HEALTH);
+        if (health != null) {
+            // the victim's real max health is the yardstick (fallback: vanilla 10 hearts)
+            double playerRef = 20.0D;
+            Player ref = zombie.level().getNearestPlayer(zombie, 64.0D);
+            if (ref != null) playerRef = ref.getMaxHealth();
+            double newMax = ZTConfig.zombieHealth(wave, playerRef);
+            double oldMax = health.getBaseValue();
+            if (newMax != oldMax) {
+                boolean wasHealthy = zombie.getHealth() >= (float) oldMax - 0.01F;
+                health.setBaseValue(newMax);
+                if (wasHealthy || zombie.getHealth() > zombie.getMaxHealth()) {
+                    zombie.setHealth((float) zombie.getMaxHealth());
+                }
+            }
         }
 
         int fromWave = ZTConfig.Z_REINFORCEMENT_FROM_WAVE.get();
