@@ -9,6 +9,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 
 import dev.file233.zombietide.config.ZTConfig;
+import dev.file233.zombietide.config.ZTSnapshot;
 import dev.file233.zombietide.util.ZTTime;
 import dev.file233.zombietide.wave.WaveData;
 import dev.file233.zombietide.wave.WaveManager;
@@ -54,13 +55,13 @@ public final class ZTCommands {
         root.then(Commands.literal("end").requires(src -> src.hasPermission(2)).executes(ZTCommands::end));
 
         root.then(Commands.literal("wave").requires(src -> src.hasPermission(2))
-                .then(Commands.argument("number", IntegerArgumentType.integer(1, 1000))
+                .then(Commands.argument("number", IntegerArgumentType.integer(1, 100000))
                         .executes(ctx -> wave(ctx, false))
                         .then(Commands.literal("instant").executes(ctx -> wave(ctx, true)))));
 
         // per-wave calm gap: list / show / set / clear (persisted into waves.intervalOverrides)
         var interval = Commands.literal("interval").executes(ctx -> overview(ctx, true));
-        interval.then(Commands.argument("wave", IntegerArgumentType.integer(1, 1000))
+        interval.then(Commands.argument("wave", IntegerArgumentType.integer(1, 100000))
                 .executes(ctx -> showPerWave(ctx, true))
                 .then(Commands.literal("clear").requires(src -> src.hasPermission(2))
                         .executes(ctx -> setPerWave(ctx, true, null)))
@@ -71,7 +72,7 @@ public final class ZTCommands {
 
         // per-wave duration: list / show / set / clear (persisted into waves.durationOverrides)
         var duration = Commands.literal("duration").executes(ctx -> overview(ctx, false));
-        duration.then(Commands.argument("wave", IntegerArgumentType.integer(1, 1000))
+        duration.then(Commands.argument("wave", IntegerArgumentType.integer(1, 100000))
                 .executes(ctx -> showPerWave(ctx, false))
                 .then(Commands.literal("clear").requires(src -> src.hasPermission(2))
                         .executes(ctx -> setPerWave(ctx, false, null)))
@@ -127,7 +128,7 @@ public final class ZTCommands {
             return 0;
         }
         WaveData d = manager.data();
-        int max = ZTConfig.MAX_WAVES.get();
+        int max = ZTSnapshot.get().maxWaves;
         if (d.finished) {
             send(ctx, ChatFormatting.GOLD, Component.translatable("command.zombietide.status.finished", d.completed, max));
             return 1;
@@ -145,9 +146,10 @@ public final class ZTCommands {
         send(ctx, ChatFormatting.GRAY, Component.translatable(
                 "command.zombietide.status.detail", manager.zombiesAlive(), d.completed));
         boolean rageOn = d.phase == WaveData.PHASE_ACTIVE && !d.paused;
+        ZTSnapshot snap = ZTSnapshot.get();
         send(ctx, ChatFormatting.LIGHT_PURPLE, Component.translatable(
                 rageOn ? "command.zombietide.status.mind_active" : "command.zombietide.status.mind_calm",
-                formatMinutes(ZTConfig.intelligence(d.wave)), formatMinutes(ZTConfig.frenzy())));
+                formatMinutes(snap.intelligenceFor(d.wave)), formatMinutes(snap.frenzyIntensity)));
         return 1;
     }
 

@@ -5,7 +5,7 @@
 <h1 align="center">ZombieTide — Đại Dịch Zombie</h1>
 
 <p align="center">
-  <a href="https://github.com/file233/zombiemod/releases/tag/v1.3.0"><b>⬇ Tải bản mới nhất: v1.3.0</b></a><br/>
+  <a href="https://github.com/file233/zombiemod/releases/tag/v1.3.1"><b>⬇ Tải bản mới nhất: v1.3.1</b></a><br/>
   <b>Minecraft 1.21.1 · NeoForge 21.1.x · Java 21</b><br/>
   Hệ thống đợt tấn công leo thang, AI zombie được tái thiết hoàn toàn, HUD chiến thuật siêu nhỏ,
   cấu hình 100% trong game và bằng lệnh, tối ưu hiệu năng cho server.<br/>
@@ -45,6 +45,7 @@
 | **Logo riêng, làm như mod chuyên nghiệp** | Emblem độc quyền 1024² (tay zombie + vòng biohazard), mods.toml đầy đủ | `logo.png` |
 | **Config chỉnh mọi thứ trong game** (ấn Mod → Config) | **91 mục** trong COMMON + CLIENT, mở qua màn hình cấu hình bản địa của NeoForge, có dịch EN/VI | `zombietide-*.toml` |
 | **Lệnh chỉnh mọi thứ + gọi/reset đợt** | `/zombietide` | xem dưới |
+| **Tối ưu CPU/GPU/RAM có hệ thống (v1.3.1)** | Snapshot config + bảng mảng theo-đợt, cache-render HUD/overlay, ring-buffer đếm zombie, debounce ghi đĩa | ⚡ Hiệu năng |
 
 ---
 
@@ -88,7 +89,7 @@ Alias rút gọn: `/zt …`.
 ## ⚙️ Cấu hình trong game
 
 `Esc → Mods → ZombieTide → Config` — màn hình cấu hình bản địa của NeoForge, đầy đủ nhãn song ngữ (EN/VI).
-**92 mục** chia thành các nhóm:
+**91 mục** chia thành các nhóm:
 
 ### `zombietide-common.toml` (79 mục — chỉnh trong SP & cả server qua lệnh)
 
@@ -103,7 +104,7 @@ Alias rút gọn: `/zt …`.
 | `spawning` | Engine sinh đợt | `ringMin/Max=24–48`, `capPerPlayer`, `daylightSpawn`, `daySpawnFactor=0.5`, `pressureCreativePlayers`, `dimensions` |
 | `effects` | Hiệu ứng xấu khi bị đánh | `procChance=0.35`, `amplifier`, `list` (pool theo đợt) |
 
-### `zombietide-client.toml` (11 mục — mỗi máy tự chỉnh)
+### `zombietide-client.toml` (12 mục — mỗi máy tự chỉnh)
 
 | Nhóm | Nội dung | Tiêu biểu |
 |---|---|---|
@@ -116,25 +117,48 @@ Mọi con số "chuẩn đặc tả" là **mặc định được ghim sẵn**, 
 
 `zombietide:wave_alarm` — còi không quân 5.0 giây được tổng hợp riêng cho mod (3 nhịp lên-xuống), phát đúng lúc T-5s trước mỗi đợt tới từng ngưởi chơi. Đổi sang âm khác bằng `waves.alarmSound`.
 
-## ⚡ Hiệu năng dành cho server thật
+## ⚡ Hiệu năng — bộ máy được tối ưu từng đường nóng (v1.3.1)
 
-- Quét spawn/máy trạng thái theo chu kỳ có **stagger** (mỗi ngưởi chơi lệch pha) — không spike mỗi tick.
-- Sinh tối đa 1 zombie/ngưởi/chu kỳ, trần sống rõ ràng (`capPerPlayer + x×wave ≤ capMax`).
-- Tai zombie: sampling 2.5 Hz + sự kiện rởi rạc, cooldown từng con.
-- Đồng bộ HUD (tiny) mỗi giây, đúng 1 packet.
+Bản 1.3.1 giữ nguyên 100% lối chơi & 91 mục config, nhưng thay toàn bộ cách các hệ thống
+*đọc* dữ liệu, hướng tới mục tiêu: **server 50+ zombie trong đợt cuối vẫn êm, client không
+tụt FPS, RAM không phình**.
+
+**Trung tâm: `ZTSnapshot`.** NeoForge config getter là một map-lookup mỗi lần gọi — vô hại
+khi gọi 1 lần/giây, nhưng hàng trăm zombie × hàng chục giá trị × 20 tick/giây thì không.
+Snapshot bake *mọi* scalar nóng + **toàn bộ toán tăng trưởng theo đợt** (tốc độ, máu, sát
+thương, tầm phát hiện/nghe, nhịp retarget, trí nhớ, cooldown tiếng động, cổng phá khối,
+trần sinh) vào **mảng phẳng index-theo-đợt** — rebuild duy nhất khi config load/reload/sửa
+lệnh. Đường nóng giờ là: đọc field nguyên thủy hoặc 1 array-index. Không còn lookup trong
+bất kỳ AI tick / spawn attempt / frame render nào.
+
+**CPU (server):**
+- **AI săn ngưởi 10 Hz**: gate bằng snapshot primitives; nhịp retarget & trí nhớ theo đợt lấy từ mảng precompute.
+- **Máy sinh đợt**: giữ lệch pha từng ngưởi (không spike tick); tỉ lệ ngày/đêm giờ **co số lần thử sinh** thay vì gieo xúc xắc vứt bỏ công quét (ban ngày rẻ hơn hẳn về CPU); đếm zombie-quanh-ngưởi **tối đa 1 lần mỗi chu kỳ** qua ring-buffer 32 slot thay thế UUID-map (không GC, tự dọn ngưởi thoát); probe vị trí dùng `MutableBlockPos` tái sử dụng.
+- **Mutation**: thứ tự gate rẻ-trước (strip giáp/tay không rồi mới tới registry), yardstick máu-đối-thủ đọc *target hiện tại* của zombie thay cho `getNearestPlayer`, sweep/đếm zombie có fast-path overworld-only (mặc định).
+- **Cảm biến tiếng động / luật combat / lọc spawn / goal phá khối** đều ăn snapshot; pool hiệu ứng cắn cache theo (epoch×wave) — một cú cắn chỉ là 1 dice-roll + 1 weighted-pick.
+- **Ghi file config có debounce 300 ms** — `/zombietide interval` chạy hàng loạt cũng không IO-spam ổ đĩa.
+
+**GPU/frame (client):**
+- **HUD**: dựng sẵn chuỗi + layout, chỉ rebuild khi gì đó *hiển thị đổi* (tối đa 1 lần/giây theo độ mịn đếm ngược, hoặc ngay khi server sync / sửa config). Giữa hai lần rebuild: vài `fill` + 2 lệnh vẽ chữ — hết.
+- **Overlay máu**: chòm droplet (vị trí, kích thước, sắc độ, độ mờ) được gieo **một lần mỗi cú đánh** theo seed vào mảng int phẳng; mỗi frame chỉ là vài chục `fill` thuần, không RNG, không Gaussian, không cấp phát. Tự rebuild khi đổi độ phân giải hoặc vặn dial.
+- Cả hai layer đều tôn trọng ẩn HUD (F1) và không chạy khi trauma = 0.
+
+**RAM:** bảng theo-đợt mặc định ~6 KB; không còn allocation trong tick/render loop của mod (ngoài vật Minecraft tự sinh); cache phân tích config (khối cầm tay, blacklist, hiệu ứng…) giữ nguyên cơ chế volatile-một-bản.
+
+**Kết tinh cũ vẫn giữ:** stagger theo chu kỳ, 1 zombie/ngưởi/chu kỳ, trần sống rõ ràng, tai 2.5 Hz + sự kiện rởi rạc, HUD sync đúng 1 packet/giây.
 
 ## 📦 Cài đặt
 
-**Tải JAR:** [github.com/file233/zombiemod/releases/tag/v1.3.0](https://github.com/file233/zombiemod/releases/tag/v1.3.0)
+**Tải JAR:** [github.com/file233/zombiemod/releases/tag/v1.3.1](https://github.com/file233/zombiemod/releases/tag/v1.3.1)
 
 1. Minecraft **1.21.1** + NeoForge **21.1.x** (khuyến nghị ≥ 21.1.100).
-2. Thả `zombietide-1.3.0.jar` vào thư mục `mods/`.
-3. Vào game — đợt 1 sẽ đến sau `calmMinutes` đầu tiên. Chúc sống sót.
+2. Thả `zombietide-1.3.1.jar` vào thư mục `mods/`.
+3. Vào game — đợt 1 sẽ đến sau 600 giây nghỉ mặc định (chỉnh riêng từng đợt bằng `/zombietide interval`). Chúc sống sót.
 
 ## 🛠 Build từ mã nguồn
 
 ```bash
-./gradlew build      # → build/libs/zombietide-1.3.0.jar
+./gradlew build      # → build/libs/zombietide-1.3.1.jar
 ./gradlew runClient  # chạy thử client
 ./gradlew runServer  # chạy thử server headless
 ```
@@ -149,6 +173,8 @@ JAR vào release theo tag.
 
 ## 🇬🇧 English summary
 
-**ZombieTide** turns survival into an escalating siege: 50 waves (first = 8 minutes, each +2 minutes), 5-second air-raid sirene before every assault, zombies that hunt by sound and smell (no line-of-sight needed), siege spawning that works at high noon, sunburn immunity mid-wave, 2-heart damage cap, 1.2× player speed cap, armorless block-carrying ghouls, block-breaking from wave 20, weighted harmful-effect bites, sparse pixel blood-droplets peppering your screen on every bite, zombies that stalk even creative-mode players, zombie health hard-capped at player + 5 hearts, per-wave-only calm-gap & duration editing in-game (`/zombietide interval|duration`, no global knob), designWave auto-balancing so the LAST wave is always the hardest whatever maxWaves you set, a 2×-player speed ceiling, intelligence & frenzy dials, daylight spawning thinned to half of night, and a tiny top-center HUD counting days/hours/minutes/seconds. Everything — 91 config entries with ×100-widened ranges covering every radius, cap, chance, list, per-wave timing, intelligence and frenzy — is tunable live, via `/zombietide config` or the NeoForge config screen.
+**ZombieTide** turns survival into an escalating siege: 50 waves (first = 8 minutes, each +2 minutes), 5-second air-raid sirene before every assault, zombies that hunt by sound and smell (no line-of-sight needed), siege spawning that works at high noon, sunburn immunity mid-wave, 2-heart damage cap, 2×-player speed ceiling, armorless block-carrying ghouls, block-breaking from wave 20, weighted harmful-effect bites, sparse pixel blood-droplets peppering your screen on every bite, zombies that stalk even creative-mode players, zombie health hard-capped at player + 5 hearts, per-wave-only calm-gap & duration editing in-game (`/zombietide interval|duration`, no global knob), designWave auto-balancing so the LAST wave is always the hardest whatever maxWaves you set, intelligence & frenzy dials, daylight spawning thinned to half of night, and a tiny top-center HUD counting days/hours/minutes/seconds. Everything — 91 config entries with ×100-widened ranges covering every radius, cap, chance, list, per-wave timing, intelligence and frenzy — is tunable live, via `/zombietide config` or the NeoForge config screen.
+
+**Performance (v1.3.1):** the whole engine was rebuilt around a config **snapshot** — every scalar plus every per-wave growth curve (speed, health, damage, reach, retarget cadence, memory, noise cooldowns, breach gates, spawn caps) is baked into flat wave-indexed arrays the moment config loads or changes, so zombie AI ticks, spawn attempts and render frames read plain fields instead of walking NeoForge's config maps. On top of that: the spawn engine scales daylight *attempt counts* instead of dice-rolling work away, counts nearby zombies at most once per cycle via a tiny fixed ring buffer, and probes positions with reusable mutable block-positions; mutations pick the zombie's existing target instead of a nearest-player search; config saving is debounced; the HUD rebuilds its strings at most once per second; and the blood droplet constellation is rolled once per hit into flat int arrays — every frame after that is just a few dozen raw pixel fills. Zero allocations in the mod's own tick/render loops, ~6 KB of per-wave tables, and unchanged gameplay.
 
 <p align="center"><i>“Bạn không trốn được thứ nghe thấy bạn.”</i></p>

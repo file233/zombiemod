@@ -523,6 +523,12 @@ public final class ZTConfig {
         return Math.min(maxZombieDamage(), 3.0D + Math.max(0, designWave(wave)) * Z_DAMAGE_PER_WAVE_HEARTS.get() * 2.0D);
     }
 
+    /**
+     * Alarm lead time in ticks.
+     * <p><b>Hot-path note:</b> read of {@code ALARM_SECONDS} is one map hit — fine once per
+     * tick by the wave conductor, but AI ticks must use {@link ZTSnapshot} instead. This
+     * value is intentionally not snapshotted: urgency ordering keeps it here.
+     */
     public static int alarmTicks() {
         return Math.max(20, (int) Math.round(ALARM_SECONDS.get() * 20.0D));
     }
@@ -621,6 +627,8 @@ public final class ZTConfig {
         effectRollCache = null;
         intervalOverrideCache = null;
         durationOverrideCache = null;
+        ZTSnapshot.refresh(); // rebake every per-wave table & hot scalar in one pass
+        dev.file233.zombietide.wave.WaveManager.onConfigEdited(); // drop alarm caches too
     }
 
     /** Per-wave calm-gap overrides (wave → seconds). */
@@ -680,7 +688,21 @@ public final class ZTConfig {
         for (Map.Entry<Integer, Integer> e : map.entrySet()) out.add(e.getKey() + "=" + e.getValue());
         entry.set(out);
         invalidateCaches();
-        SPEC.save();
+        saveThrottled();
+    }
+
+    // ------------------------------------------------------------------ saving
+    /** Upper bound on config-file write frequency — disk IO never becomes a tick cost. */
+    private static final long SAVE_DEBOUNCE_NANOS = 300_000_000L; // 300 ms
+    private static volatile long lastSaveNanos = 0L;
+
+    /** Persists the spec, coalescing bursts of rapid edits (command macros, datapacks). */
+    public static void saveThrottled() {
+        long now = System.nanoTime();
+        if (now - lastSaveNanos >= SAVE_DEBOUNCE_NANOS) {
+            lastSaveNanos = now;
+            SPEC.save();
+        }
     }
 
     public static List<Item> heldBlocks() {
@@ -873,7 +895,7 @@ public final class ZTConfig {
             return "bad_value: " + ex.getMessage();
         }
         invalidateCaches();
-        SPEC.save();
+        saveThrottled();
         return null;
     }
 

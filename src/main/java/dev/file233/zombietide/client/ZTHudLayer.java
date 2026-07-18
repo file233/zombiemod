@@ -14,6 +14,12 @@ import net.minecraft.network.chat.Component;
  * <p>Calm: fills its little progress bar as the next wave approaches, counting down with
  * days/hours/minutes/seconds. Alarm: flashes amber. Wave: turns red and drains the bar as
  * the siege burns out. After the final wave: a small golden memorial. Always tiny.
+ *
+ * <p><b>Performance:</b> every rendered string and the whole panel layout are rebuilt only
+ * when something visible actually changes (once per displayed second at the highest rate —
+ * the countdown granularity — and instantly on server sync or config edit). Frames between
+ * rebuilds cost a handful of {@code fill}/{@code drawCenteredString} calls and nothing else:
+ * no config lookups, no string building, no component trees.
  */
 public final class ZTHudLayer implements LayeredDraw.Layer {
     public static final ZTHudLayer INSTANCE = new ZTHudLayer();
@@ -28,29 +34,41 @@ public final class ZTHudLayer implements LayeredDraw.Layer {
     private static final int COLOR_TEXT = 0xFFF3F3F3;
     private static final int COLOR_TEXT_DIM = 0xFFBDBDBD;
 
+    // ---- render cache (all derived state; rebuilt on change only) ----
+    private boolean dirty = true;
+    private long cachedSecond = Long.MIN_VALUE;
+    private String cachedTitle = "";
+    private String cachedTime = "";
+    private int cachedScreenW = -1;
+    private double cachedScale = 0.7D;
+    private int cachedOffsetY = 2;
+    private float cx = 0.0F;
+
+    /** Force the next frame to rebuild every string and the layout (config edits). */
+    public void invalidate() {
+        dirty = true;
+    }
+
     @Override
     public void render(GuiGraphics gui, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui || mc.player == null || mc.level == null) return;
         if (!ZTClientConfig.HUD_ENABLED.get() || !ZTClientState.hasData) return;
 
-        float scale = (float) ZTClientConfig.HUD_SCALE.get().doubleValue();
-        int offsetY = ZTClientConfig.HUD_OFFSET_Y.get();
+        int screenW = mc.getWindow().getGuiScaledWidth();
+        long shownSecond = ZTClientState.finished ? -2L : ZTClientState.ticksRemaining / 20L;
+        if (dirty || screenW != cachedScreenW || shownSecond != cachedSecond) {
+            rebuild(mc, screenW, shownSecond);
+        }
 
-        String title = titleText();
-        String time = timeText();
         float progress = progress();
-
         int barColor = barColor();
         int textColor = ZTClientState.alarmSounding && blink() ? COLOR_ALARM : COLOR_TEXT;
 
-        int screenW = mc.getWindow().getGuiScaledWidth();
-        float cx = screenW / 2.0F;
-
         var pose = gui.pose();
         pose.pushPose();
-        pose.translate(cx, offsetY, 0.0F);
-        pose.scale(scale, scale, 1.0F);
+        pose.translate(cx, cachedOffsetY, 0.0F);
+        pose.scale((float) cachedScale, (float) cachedScale, 1.0F);
 
         int half = 78;
         int height = 27;
@@ -60,17 +78,29 @@ public final class ZTHudLayer implements LayeredDraw.Layer {
         gui.fill(-half, height - 1, half, height, COLOR_BORDER);
 
         // line 1: wave label
-        gui.drawCenteredString(mc.font, title, 0, 3, textColor);
+        gui.drawCenteredString(mc.font, cachedTitle, 0, 3, textColor);
         // line 2: countdown
-        gui.drawCenteredString(mc.font, time, 0, 13, ZTClientState.finished ? COLOR_GOLD : COLOR_TEXT_DIM);
+        gui.drawCenteredString(mc.font, cachedTime, 0, 13, ZTClientState.finished ? COLOR_GOLD : COLOR_TEXT_DIM);
 
-        // line 3: progress bar
+        // line 3: progress bar (kept silky: bar math is per-frame on purpose)
         int barHalf = 72;
         gui.fill(-barHalf, 22, barHalf, 25, COLOR_BAR_BG);
         int fillTo = -barHalf + Math.round(progress * barHalf * 2.0F);
         if (fillTo > -barHalf) gui.fill(-barHalf, 22, fillTo, 25, barColor);
 
         pose.popPose();
+    }
+
+    /** Rebuilds cached strings/layout for the current state. Runs ≤ once per second. */
+    private void rebuild(Minecraft mc, int screenW, long shownSecond) {
+        cachedTitle = titleText();
+        cachedTime = timeText();
+        cachedScale = ZTClientConfig.HUD_SCALE.get();
+        cachedOffsetY = ZTClientConfig.HUD_OFFSET_Y.get();
+        cachedScreenW = screenW;
+        cx = screenW / 2.0F;
+        cachedSecond = shownSecond;
+        dirty = false;
     }
 
     private static boolean blink() {

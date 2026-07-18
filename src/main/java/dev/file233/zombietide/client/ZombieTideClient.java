@@ -9,6 +9,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
@@ -29,8 +30,16 @@ public final class ZombieTideClient {
         modContainer.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
 
         modEventBus.addListener(ZombieTideClient::onRegisterGuiLayers);
+        modEventBus.addListener(ZombieTideClient::onClientConfigReloaded);
         NeoForge.EVENT_BUS.addListener(ZombieTideClient::onClientTick);
         NeoForge.EVENT_BUS.addListener(ZombieTideClient::onLoggingOut);
+    }
+
+    /** Config-screen saves / file edits: the HUD rebuilds its cached strings next frame. */
+    private static void onClientConfigReloaded(ModConfigEvent.Reloading event) {
+        if (event.getConfig().getSpec() == ZTClientConfig.SPEC) {
+            ZTHudLayer.INSTANCE.invalidate();
+        }
     }
 
     private static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {

@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.3.1 — "The Tuning Forge" (2026-07-19)
+
+### Tối ưu hóa (giữ nguyên 100% lối chơi & 91 mục config)
+
+- **`ZTSnapshot` (mới)** — lớp bake-toàn-bộ-cấu-hình: mọi scalar nóng thành field nguyên
+  thủy; toàn bộ toán tăng trưởng theo đợt (tốc độ, máu, sát thương, tầm phát hiện/nghe,
+  nhịp retarget, trí nhớ, cooldown tiếng động, gọi-bạn, KBR, trần sinh, cổng phá khối,
+  khoảng-nghỉ/thởi-lượng riêng từng đợt) thành **mảng phẳng index-theo-đợt** (~6 KB ở 50
+  đợt). Refresh đúng 1 lần khi config load/reload/sửa lệnh. Mọi AI tick (10 Hz × hàng trăm
+  zombie), spawn attempt, combat/sense/spawn filter giờ đọc field/array — **không còn
+  map-lookup của NeoForge config trong đường nóng**.
+- **CPU spawn engine**: hệ số ngày/đêm giờ *co số lần thử sinh* (ban ngày tốn ít CPU hẳn,
+  không còn gieo xúc xắc vứt công quét); đếm zombie-quanh-ngưởi tối đa 1 lần/chu kỳ qua
+  **ring-buffer 32 slot** thay UUID-map (không GC, tự dọn ngưởi thoát); probe vị trí bằng
+  `MutableBlockPos` tái sử dụng; bubble-no-spawn tính thuần tọa độ.
+- **CPU zombie mutation**: gate rẻ-trước; yardstick máu lấy target sẵn có thay cho
+  `getNearestPlayer`; sweep/đếm fast-path khi chỉ chơi overworld.
+- **CPU combat/sense/blockbreak**: pool hiệu ứng cắn cache theo (epoch × wave); gate đốt-
+  nắng (mọi entity, mọi tick) đọc đúng 2 primitive; BlockBreakGoal bỏ cấp phát
+  `BlockPos[]`/`Vec3` mỗi lần quét 2 Hz.
+- **CPU wave conductor**: còi + holder âm thanh cache theo chu kỳ; lọc dimension bị bỏ qua
+  ở cấu hình mặc định; mọi đọc config per-tick bị loại bỏ.
+- **Đĩa**: ghi file config qua lệnh có **debounce 300 ms** (spam `/zombietide interval`
+  không còn IO-spam).
+- **GPU/frame**: HUD chỉ rebuild chuỗi+layout khi nội dung đổi (≤ 1 lần/giây, hoặc ngay khi
+  sync/sửa config); overlay máu gieo chòm droplet **1 lần mỗi cú đánh** vào mảng int phẳng —
+  mỗi frame chỉ là vài chục `fill` nguyên thủy, không RNG/Gaussian/cấp phát; tôn trọng F1.
+- **RAM**: không còn allocation của mod trong tick/render loop; bảng theo-đợt ~6 KB.
+
+### Sửa chữa
+
+- Biên số `wave` ở lệnh `wave|interval|duration` nới 1000 → 100000 (khớp range ×100).
+- README: bỏ tham chiếu còn sót tới `calmMinutes` (đã xóa từ 1.3.0), chuẩn hóa số mục config.
+
 ## 1.3.0 — "Sparse Blood, Twin Pace, Every Wave Its Own Clock" (2026-07-19)
 
 ### Thay đổi theo yêu cầu mới
