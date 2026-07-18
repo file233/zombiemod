@@ -353,49 +353,49 @@ public final class ZTConfig {
         b.pop();
 
         // ------------------------------------------------------------------ intelligence
-        b.translation("zombietide.configuration.intelligence").push(\"intelligence\");
-        I_BASE = b.comment(\"Baseline intelligence level of zombies (1 = trained ghoul).\",
-                \"Affects: detection & hearing reach, reaction latency to noises, target memory.\",
-                \"Độ thông minh cơ bản của zombie (1 = quái đã qua huấn luyện).\")
-                .translation(\"zombietide.configuration.intelligenceBase\")
-                .defineInRange(\"baseLevel\", 1.0D, 0.0D, 10.0D);
-        I_PER_WAVE = b.comment(\"Intelligence gained per wave (they study you every round).\",
-                \"Độ thông minh tăng sau mỗi đợt (chúng học bạn qua từng trận).\")
-                .translation(\"zombietide.configuration.intelligencePerWave\")
-                .defineInRange(\"perWaveBonus\", 0.04D, 0.0D, 1.0D);
-        I_MAX = b.comment(\"Intelligence cap.\",
-                \"Trần độ thông minh.\")
-                .translation(\"zombietide.configuration.intelligenceMax\")
-                .defineInRange(\"maxLevel\", 10.0D, 1.0D, 100.0D);
-        I_UNSEEN_MEMORY = b.comment(\"Base ticks a zombie remembers its prey without seeing it.\",
-                \"Số tick cơ bản zombie nhớ con mồi dù không nhìn thấy.\")
-                .translation(\"zombietide.configuration.unseenMemoryTicks\")
-                .defineInRange(\"unseenMemoryTicks\", 60, 10, 600);
-        I_UNSEEN_PER_WAVE = b.comment(\"Extra memory ticks gained per wave.\",
-                \"Trí nhớ tăng thêm mỗi đợt (tick).\")
-                .translation(\"zombietide.configuration.unseenMemoryPerWave\")
-                .defineInRange(\"unseenMemoryPerWave\", 2, 0, 60);
+        b.translation("zombietide.configuration.intelligence").push("intelligence");
+        I_BASE = b.comment("Baseline intelligence level of zombies (1 = trained ghoul).",
+                "Affects: detection & hearing reach, reaction latency to noises, target memory.",
+                "Độ thông minh cơ bản của zombie (1 = quái đã qua huấn luyện).")
+                .translation("zombietide.configuration.intelligenceBase")
+                .defineInRange("baseLevel", 1.0D, 0.0D, 10.0D);
+        I_PER_WAVE = b.comment("Intelligence gained per wave (they study you every round).",
+                "Độ thông minh tăng sau mỗi đợt (chúng học bạn qua từng trận).")
+                .translation("zombietide.configuration.intelligencePerWave")
+                .defineInRange("perWaveBonus", 0.04D, 0.0D, 1.0D);
+        I_MAX = b.comment("Intelligence cap.",
+                "Trần độ thông minh.")
+                .translation("zombietide.configuration.intelligenceMax")
+                .defineInRange("maxLevel", 10.0D, 1.0D, 100.0D);
+        I_UNSEEN_MEMORY = b.comment("Base ticks a zombie remembers its prey without seeing it.",
+                "Số tick cơ bản zombie nhớ con mồi dù không nhìn thấy.")
+                .translation("zombietide.configuration.unseenMemoryTicks")
+                .defineInRange("unseenMemoryTicks", 60, 10, 600);
+        I_UNSEEN_PER_WAVE = b.comment("Extra memory ticks gained per wave.",
+                "Trí nhớ tăng thêm mỗi đợt (tick).")
+                .translation("zombietide.configuration.unseenMemoryPerWave")
+                .defineInRange("unseenMemoryPerWave", 2, 0, 60);
         b.pop();
 
         // ------------------------------------------------------------------ frenzy
-        b.translation(\"zombietide.configuration.frenzy\").push(\"frenzy\");
-        F_INTENSITY = b.comment(\"How rabid zombies become DURING waves (scales all wave-only boosts).\",
-                \"0 = zen monks, 1 = the designed blood rage, 3 = absolutely feral.\",
-                \"Mức điên cuồng KHI TRONG ĐỢT (nhân mọi buff chỉ-có-trong-đợt).\")
-                .translation(\"zombietide.configuration.frenzyIntensity\")
-                .defineInRange(\"intensity\", 1.0D, 0.0D, 3.0D);
-        F_SPEED_BOOST = b.comment(\"Movement speed added while a wave is active (never above zombies.maxSpeed).\",
-                \"Tốc độ cộng thêm khi đang trong đợt (không bao giờ vượt zombies.maxSpeed).\")
-                .translation(\"zombietide.configuration.frenzySpeedBoost\")
-                .defineInRange(\"speedBoost\", 0.005D, 0.0D, 0.05D);
-        F_HEARING_BONUS = b.comment(\"Extra hearing radius (blocks) while a wave is active.\",
-                \"Bán kính nghe cộng thêm khi trong đợt.\")
-                .translation(\"zombietide.configuration.frenzyHearingBonus\")
-                .defineInRange(\"hearingBonus\", 8.0D, 0.0D, 64.0D);
-        F_NOISE_FACTOR = b.comment(\"Reaction-latency multiplier to noises during waves (lower = twitchier).\",
-                \"Hệ số độ trễ phản ứng tiếng động khi trong đợt (nhỏ = nhạy hơn).\")
-                .translation(\"zombietide.configuration.frenzyNoiseFactor\")
-                .defineInRange(\"noiseReactionFactor\", 0.75D, 0.1D, 1.0D);
+        b.translation("zombietide.configuration.frenzy").push("frenzy");
+        F_INTENSITY = b.comment("How rabid zombies become DURING waves (scales all wave-only boosts).",
+                "0 = zen monks, 1 = the designed blood rage, 3 = absolutely feral.",
+                "Mức điên cuồng KHI TRONG ĐỢT (nhân mọi buff chỉ-có-trong-đợt).")
+                .translation("zombietide.configuration.frenzyIntensity")
+                .defineInRange("intensity", 1.0D, 0.0D, 3.0D);
+        F_SPEED_BOOST = b.comment("Movement speed added while a wave is active (never above zombies.maxSpeed).",
+                "Tốc độ cộng thêm khi đang trong đợt (không bao giờ vượt zombies.maxSpeed).")
+                .translation("zombietide.configuration.frenzySpeedBoost")
+                .defineInRange("speedBoost", 0.005D, 0.0D, 0.05D);
+        F_HEARING_BONUS = b.comment("Extra hearing radius (blocks) while a wave is active.",
+                "Bán kính nghe cộng thêm khi trong đợt.")
+                .translation("zombietide.configuration.frenzyHearingBonus")
+                .defineInRange("hearingBonus", 8.0D, 0.0D, 64.0D);
+        F_NOISE_FACTOR = b.comment("Reaction-latency multiplier to noises during waves (lower = twitchier).",
+                "Hệ số độ trễ phản ứng tiếng động khi trong đợt (nhỏ = nhạy hơn).")
+                .translation("zombietide.configuration.frenzyNoiseFactor")
+                .defineInRange("noiseReactionFactor", 0.75D, 0.1D, 1.0D);
         b.pop();
 
         // ------------------------------------------------------------------ spawning
