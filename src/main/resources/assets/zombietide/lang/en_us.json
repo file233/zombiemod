@@ -147,5 +147,19 @@
   "zombietide.configuration.amplifier": "Effect amplifier (I+)",
   "zombietide.configuration.client.fadePerTick": "Blood fade per tick",
   "zombietide.configuration.client.blurPasses": "Blood blur passes",
-  "zombietide.configuration.client.splatterVariants": "Random blood splatters"
+  "zombietide.configuration.client.splatterVariants": "Random blood splatters",
+  "command.zombietide.status.mind_active": "Mind: intelligence x%s | frenzy x%s (RAGE ON)",
+  "command.zombietide.status.mind_calm": "Mind: intelligence x%s | frenzy x%s (dormant between waves)",
+  "zombietide.configuration.intelligence": "Zombie Intelligence",
+  "zombietide.configuration.intelligenceBase": "Intelligence base level",
+  "zombietide.configuration.intelligencePerWave": "+Intelligence per wave",
+  "zombietide.configuration.intelligenceMax": "Intelligence cap",
+  "zombietide.configuration.unseenMemoryTicks": "Target memory (ticks)",
+  "zombietide.configuration.unseenMemoryPerWave": "+Memory ticks per wave",
+  "zombietide.configuration.frenzy": "Wave Frenzy",
+  "zombietide.configuration.frenzyIntensity": "Frenzy intensity",
+  "zombietide.configuration.frenzySpeedBoost": "Frenzy speed boost",
+  "zombietide.configuration.frenzyHearingBonus": "Frenzy hearing bonus",
+  "zombietide.configuration.frenzyNoiseFactor": "Frenzy reaction factor",
+  "zombietide.configuration.daySpawnFactor": "Day spawn factor (vs night)"
 }

@@ -1,6 +1,7 @@
 package dev.file233.zombietide.zombie;
 
 import dev.file233.zombietide.config.ZTConfig;
+import dev.file233.zombietide.wave.WaveManager;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
@@ -30,7 +31,15 @@ public class ZTHuntPlayerGoal extends NearestAttackableTargetGoal<Player> {
     public boolean canUse() {
         if (!ZTConfig.enabled() || !ZTConfig.Z_HUNT_WITHOUT_SIGHT.get()) return false;
         if (!ZTConfig.dimensionAllowed(this.mob.level().dimension())) return false;
-        return super.canUse();
+        int wave = WaveManager.currentWave();
+        boolean active = WaveManager.isWaveActive();
+        // own retarget cadence: brains + wave-rage decide how twitchy the nose is
+        int interval = ZTConfig.retargetIntervalTicks(wave, active);
+        if (interval > 0 && this.mob.getRandom().nextInt(interval) != 0) return false;
+        // and how long the scent lingers once sight is lost
+        this.setUnseenMemoryTicks(ZTConfig.unseenMemoryTicks(wave, active));
+        findTarget();
+        return this.target != null;
     }
 
     /**

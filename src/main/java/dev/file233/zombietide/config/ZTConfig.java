@@ -109,6 +109,19 @@ public final class ZTConfig {
     public static final ModConfigSpec.BooleanValue T_CREATIVE;
     public static final ModConfigSpec.BooleanValue T_SPECTATORS;
 
+    // intelligence (the brains dial)
+    public static final ModConfigSpec.DoubleValue I_BASE;
+    public static final ModConfigSpec.DoubleValue I_PER_WAVE;
+    public static final ModConfigSpec.DoubleValue I_MAX;
+    public static final ModConfigSpec.IntValue I_UNSEEN_MEMORY;
+    public static final ModConfigSpec.IntValue I_UNSEEN_PER_WAVE;
+
+    // frenzy (the wave-rage dial)
+    public static final ModConfigSpec.DoubleValue F_INTENSITY;
+    public static final ModConfigSpec.DoubleValue F_SPEED_BOOST;
+    public static final ModConfigSpec.DoubleValue F_HEARING_BONUS;
+    public static final ModConfigSpec.DoubleValue F_NOISE_FACTOR;
+
     // spawning
     public static final ModConfigSpec.BooleanValue S_ENABLED;
     public static final ModConfigSpec.IntValue S_INTERVAL_TICKS;
@@ -123,6 +136,7 @@ public final class ZTConfig {
     public static final ModConfigSpec.DoubleValue S_SURFACE_CHANCE;
     public static final ModConfigSpec.BooleanValue S_IGNORE_GAMERULE;
     public static final ModConfigSpec.BooleanValue S_PRESSURE_CREATIVE;
+    public static final ModConfigSpec.DoubleValue S_DAY_SPAWN_FACTOR;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> S_DIMENSIONS;
 
     // effects
@@ -338,6 +352,52 @@ public final class ZTConfig {
                 .define("targetSpectators", false);
         b.pop();
 
+        // ------------------------------------------------------------------ intelligence
+        b.translation("zombietide.configuration.intelligence").push(\"intelligence\");
+        I_BASE = b.comment(\"Baseline intelligence level of zombies (1 = trained ghoul).\",
+                \"Affects: detection & hearing reach, reaction latency to noises, target memory.\",
+                \"Độ thông minh cơ bản của zombie (1 = quái đã qua huấn luyện).\")
+                .translation(\"zombietide.configuration.intelligenceBase\")
+                .defineInRange(\"baseLevel\", 1.0D, 0.0D, 10.0D);
+        I_PER_WAVE = b.comment(\"Intelligence gained per wave (they study you every round).\",
+                \"Độ thông minh tăng sau mỗi đợt (chúng học bạn qua từng trận).\")
+                .translation(\"zombietide.configuration.intelligencePerWave\")
+                .defineInRange(\"perWaveBonus\", 0.04D, 0.0D, 1.0D);
+        I_MAX = b.comment(\"Intelligence cap.\",
+                \"Trần độ thông minh.\")
+                .translation(\"zombietide.configuration.intelligenceMax\")
+                .defineInRange(\"maxLevel\", 10.0D, 1.0D, 100.0D);
+        I_UNSEEN_MEMORY = b.comment(\"Base ticks a zombie remembers its prey without seeing it.\",
+                \"Số tick cơ bản zombie nhớ con mồi dù không nhìn thấy.\")
+                .translation(\"zombietide.configuration.unseenMemoryTicks\")
+                .defineInRange(\"unseenMemoryTicks\", 60, 10, 600);
+        I_UNSEEN_PER_WAVE = b.comment(\"Extra memory ticks gained per wave.\",
+                \"Trí nhớ tăng thêm mỗi đợt (tick).\")
+                .translation(\"zombietide.configuration.unseenMemoryPerWave\")
+                .defineInRange(\"unseenMemoryPerWave\", 2, 0, 60);
+        b.pop();
+
+        // ------------------------------------------------------------------ frenzy
+        b.translation(\"zombietide.configuration.frenzy\").push(\"frenzy\");
+        F_INTENSITY = b.comment(\"How rabid zombies become DURING waves (scales all wave-only boosts).\",
+                \"0 = zen monks, 1 = the designed blood rage, 3 = absolutely feral.\",
+                \"Mức điên cuồng KHI TRONG ĐỢT (nhân mọi buff chỉ-có-trong-đợt).\")
+                .translation(\"zombietide.configuration.frenzyIntensity\")
+                .defineInRange(\"intensity\", 1.0D, 0.0D, 3.0D);
+        F_SPEED_BOOST = b.comment(\"Movement speed added while a wave is active (never above zombies.maxSpeed).\",
+                \"Tốc độ cộng thêm khi đang trong đợt (không bao giờ vượt zombies.maxSpeed).\")
+                .translation(\"zombietide.configuration.frenzySpeedBoost\")
+                .defineInRange(\"speedBoost\", 0.005D, 0.0D, 0.05D);
+        F_HEARING_BONUS = b.comment(\"Extra hearing radius (blocks) while a wave is active.\",
+                \"Bán kính nghe cộng thêm khi trong đợt.\")
+                .translation(\"zombietide.configuration.frenzyHearingBonus\")
+                .defineInRange(\"hearingBonus\", 8.0D, 0.0D, 64.0D);
+        F_NOISE_FACTOR = b.comment(\"Reaction-latency multiplier to noises during waves (lower = twitchier).\",
+                \"Hệ số độ trễ phản ứng tiếng động khi trong đợt (nhỏ = nhạy hơn).\")
+                .translation(\"zombietide.configuration.frenzyNoiseFactor\")
+                .defineInRange(\"noiseReactionFactor\", 0.75D, 0.1D, 1.0D);
+        b.pop();
+
         // ------------------------------------------------------------------ spawning
         b.translation("zombietide.configuration.spawning").push("spawning");
         S_ENABLED = b.comment("Enable the wave spawn engine (keeps horde pressure up, even by day).",
@@ -368,6 +428,11 @@ public final class ZTConfig {
                 "Khi trong đợt, zombie vẫn xuất hiện vây quanh ngưởi chơi ở chế độ sáng tạo.")
                 .translation("zombietide.configuration.pressureCreativePlayers")
                 .define("pressureCreativePlayers", true);
+        S_DAY_SPAWN_FACTOR = b.comment("Wave-spawn rate while the sun is up, relative to night (0.5 = HALF as many by day).",
+                "The tide still comes at noon — just thinner light-shy ranks.",
+                "Tỉ lệ sinh zombie ban ngày so với ban đêm (0.5 = ÍT HƯN 2 LẦN).")
+                .translation("zombietide.configuration.daySpawnFactor")
+                .defineInRange("daySpawnFactor", 0.5D, 0.0D, 1.0D);
         S_DIMENSIONS = b.comment("Dimensions where waves and the spawn engine apply.",
                 "Các chiều (dimension) áp dụng hệ thống đợt.").translation("zombietide.configuration.dimensions").defineListAllowEmpty("dimensions",
                 () -> List.of("minecraft:overworld"), o -> o instanceof String s && ResourceLocation.tryParse(s) != null);
@@ -463,17 +528,60 @@ public final class ZTConfig {
         return Z_MAX_DAMAGE_HEARTS.get() * 2.0D; // hearts -> health points
     }
 
-    public static double zombieSpeed(int wave) {
-        return Math.min(Z_MAX_SPEED.get(), Z_BASE_SPEED.get() + Math.max(0, wave - 1) * Z_SPEED_PER_WAVE.get());
+    // ------------------------------------------------------------------ the two dials
+    /** Effective intelligence level for a wave: base + growth, clamped to the cap. */
+    public static double intelligence(int wave) {
+        return Math.min(I_MAX.get(), I_BASE.get() + Math.max(0, wave) * I_PER_WAVE.get());
+    }
+
+    /** Reach scaling from brains: intelligence×1 = 1.0×, ×3 = 1.5×, ×5 = 2.0×. */
+    private static double intellectReachScale(int wave) {
+        return 0.75D + 0.25D * intelligence(wave);
+    }
+
+    /** Effective frenzy multiplier during waves (0 when calm via callers passing active=false). */
+    public static double frenzy() {
+        return F_INTENSITY.get();
+    }
+
+    /** How often (ticks) a hunt goal re-checks for prey. Smarter + frenzied = twitchier. */
+    public static int retargetIntervalTicks(int wave, boolean waveActive) {
+        int interval = (int) Math.round(14.0D - 2.0D * intelligence(wave) - (waveActive ? 3.0D * frenzy() : 0.0D));
+        return Math.max(2, Math.min(40, interval));
+    }
+
+    /** Ticks a zombie remembers prey it can no longer see (scales with brains + rage). */
+    public static int unseenMemoryTicks(int wave, boolean waveActive) {
+        int base = I_UNSEEN_MEMORY.get() + Math.max(0, wave) * I_UNSEEN_PER_WAVE.get();
+        if (waveActive) base = (int) Math.round(base * (1.0D + 0.5D * frenzy()));
+        return Math.max(10, Math.min(600, base));
+    }
+
+    /** Reaction cooldown for the sense engine: smarter reacts faster, frenzy faster still. */
+    public static int noiseCooldownTicks(int wave, boolean waveActive) {
+        double brainFactor = Math.max(0.5D, 1.0D - 0.08D * intelligence(wave));
+        double frenzyFactor = waveActive ? F_NOISE_FACTOR.get() : 1.0D;
+        return Math.max(5, (int) Math.round(Z_NOISE_COOLDOWN_TICKS.get() * brainFactor * frenzyFactor));
+    }
+
+    public static double zombieSpeed(int wave, boolean waveActive) {
+        double speed = Z_BASE_SPEED.get() + Math.max(0, wave - 1) * Z_SPEED_PER_WAVE.get();
+        if (waveActive) speed += F_SPEED_BOOST.get() * frenzy();
+        return Math.min(Z_MAX_SPEED.get(), speed); // the 1.2x law is unbreakable
     }
 
     public static double followRange(int wave, boolean waveActive) {
-        double v = Z_FOLLOW_RANGE.get() + Math.max(0, wave) * Z_FOLLOW_PER_WAVE.get() + (waveActive ? Z_FOLLOW_WAVE_BONUS.get() : 0.0D);
+        double v = Z_FOLLOW_RANGE.get() + Math.max(0, wave) * Z_FOLLOW_PER_WAVE.get()
+                + (waveActive ? Z_FOLLOW_WAVE_BONUS.get() * frenzy() : 0.0D);
+        v *= intellectReachScale(wave);
         return Math.min(Z_FOLLOW_CAP.get(), v);
     }
 
-    public static double hearingRadius(int wave) {
-        return Math.min(Z_HEARING_CAP.get(), Z_HEARING_RADIUS.get() + Math.max(0, wave) * Z_HEARING_PER_WAVE.get());
+    public static double hearingRadius(int wave, boolean waveActive) {
+        double v = Z_HEARING_RADIUS.get() + Math.max(0, wave) * Z_HEARING_PER_WAVE.get()
+                + (waveActive ? F_HEARING_BONUS.get() * frenzy() : 0.0D);
+        v *= intellectReachScale(wave);
+        return Math.min(Z_HEARING_CAP.get(), v);
     }
 
     public static int zombieCap(int wave) {
@@ -707,6 +815,15 @@ public final class ZTConfig {
         m.put("zombies.convertVariants", new BridgeEntry(Z_CONVERT_VARIANTS, "boolean"));
         m.put("targeting.targetCreativePlayers", new BridgeEntry(T_CREATIVE, "boolean"));
         m.put("targeting.targetSpectators", new BridgeEntry(T_SPECTATORS, "boolean"));
+        m.put("intelligence.baseLevel", new BridgeEntry(I_BASE, "double"));
+        m.put("intelligence.perWaveBonus", new BridgeEntry(I_PER_WAVE, "double"));
+        m.put("intelligence.maxLevel", new BridgeEntry(I_MAX, "double"));
+        m.put("intelligence.unseenMemoryTicks", new BridgeEntry(I_UNSEEN_MEMORY, "int"));
+        m.put("intelligence.unseenMemoryPerWave", new BridgeEntry(I_UNSEEN_PER_WAVE, "int"));
+        m.put("frenzy.intensity", new BridgeEntry(F_INTENSITY, "double"));
+        m.put("frenzy.speedBoost", new BridgeEntry(F_SPEED_BOOST, "double"));
+        m.put("frenzy.hearingBonus", new BridgeEntry(F_HEARING_BONUS, "double"));
+        m.put("frenzy.noiseReactionFactor", new BridgeEntry(F_NOISE_FACTOR, "double"));
         m.put("spawning.enabled", new BridgeEntry(S_ENABLED, "boolean"));
         m.put("spawning.intervalTicks", new BridgeEntry(S_INTERVAL_TICKS, "int"));
         m.put("spawning.attemptsPerCycle", new BridgeEntry(S_ATTEMPTS_PER_CYCLE, "int"));
@@ -720,6 +837,7 @@ public final class ZTConfig {
         m.put("spawning.surfaceChance", new BridgeEntry(S_SURFACE_CHANCE, "double"));
         m.put("spawning.ignoreDoMobSpawningRule", new BridgeEntry(S_IGNORE_GAMERULE, "boolean"));
         m.put("spawning.pressureCreativePlayers", new BridgeEntry(S_PRESSURE_CREATIVE, "boolean"));
+        m.put("spawning.daySpawnFactor", new BridgeEntry(S_DAY_SPAWN_FACTOR, "double"));
         m.put("effects.procChance", new BridgeEntry(E_PROC_CHANCE, "double"));
         m.put("effects.onlyDuringWaves", new BridgeEntry(E_ONLY_DURING_WAVES, "boolean"));
         m.put("effects.amplifier", new BridgeEntry(E_AMPLIFIER, "int"));

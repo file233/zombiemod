@@ -136,14 +136,15 @@ public final class SenseEngine {
         if (!ZTConfig.enabled()) return;
         if (!ZTConfig.dimensionAllowed(level.dimension())) return;
 
-        double radius = Math.min(160.0D, ZTConfig.hearingRadius(WaveManager.currentWave()) * relativeRadius);
+        double radius = Math.min(160.0D,
+                ZTConfig.hearingRadius(WaveManager.currentWave(), WaveManager.isWaveActive()) * relativeRadius);
         if (radius < 1.0D) return;
 
         AABB box = new AABB(
                 pos.x - radius, pos.y - radius * 0.75D, pos.z - radius,
                 pos.x + radius, pos.y + radius * 0.75D, pos.z + radius);
         long now = level.getGameTime();
-        int cooldownTicks = Math.max(5, ZTConfig.Z_NOISE_COOLDOWN_TICKS.get());
+        int cooldownTicks = ZTConfig.noiseCooldownTicks(WaveManager.currentWave(), WaveManager.isWaveActive());
 
         for (Zombie zombie : level.getEntitiesOfClass(Zombie.class, box)) {
             if (zombie.distanceToSqr(pos) > radius * radius) continue;

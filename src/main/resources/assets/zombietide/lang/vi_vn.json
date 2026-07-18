@@ -147,5 +147,19 @@
   "zombietide.configuration.amplifier": "Cấp hiệu ứng (I+)",
   "zombietide.configuration.client.fadePerTick": "Máu nhạt dần mỗi tick",
   "zombietide.configuration.client.blurPasses": "Số lớp mờ của máu",
-  "zombietide.configuration.client.splatterVariants": "Họa tiết máu ngẫu nhiên"
+  "zombietide.configuration.client.splatterVariants": "Họa tiết máu ngẫu nhiên",
+  "command.zombietide.status.mind_active": "Bộ não: thông minh x%s | điên cuồng x%s (ĐANG CUỒNG LOẠN)",
+  "command.zombietide.status.mind_calm": "Bộ não: thông minh x%s | điên cuồng x%s (ngủ đông giữa đợt)",
+  "zombietide.configuration.intelligence": "Độ thông minh zombie",
+  "zombietide.configuration.intelligenceBase": "Độ thông minh cơ bản",
+  "zombietide.configuration.intelligencePerWave": "+Thông minh mỗi đợt",
+  "zombietide.configuration.intelligenceMax": "Trần thông minh",
+  "zombietide.configuration.unseenMemoryTicks": "Trí nhớ mục tiêu (tick)",
+  "zombietide.configuration.unseenMemoryPerWave": "+Tick trí nhớ mỗi đợt",
+  "zombietide.configuration.frenzy": "Độ điên cuồng trong đợt",
+  "zombietide.configuration.frenzyIntensity": "Cường độ điên cuồng",
+  "zombietide.configuration.frenzySpeedBoost": "Tốc độ cộng thêm trong đợt",
+  "zombietide.configuration.frenzyHearingBonus": "Bán kính nghe thêm trong đợt",
+  "zombietide.configuration.frenzyNoiseFactor": "Hệ số phản ứng trong đợt",
+  "zombietide.configuration.daySpawnFactor": "Tỉ lệ sinh ban ngày (so với đêm)"
 }

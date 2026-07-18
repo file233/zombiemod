@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.0 — "Smarter, Madder, Day-Shy" (2026-07-19)
+
+### Thêm mới
+- **Nhóm chỉnh ĐỘ THÔNG MINH** (`intelligence.*`): baseLevel (mặc định 1.0), perWaveBonus (0.04/đợt), maxLevel, trí nhớ mục tiêu (unseenMemoryTicks=60, +2/đợt).
+  - Thông minh ảnh hưởng: tầm phát hiện, bán kính nghe (×0.75+0.25×I), độ trễ phản ứng tiếng động, tốc độ re-target, trí nhớ mục tiêu khi mất tầm nhìn.
+- **Nhóm chỉnh ĐỘ ĐIÊN CUỒNG trong đợt** (`frenzy.*`): intensity (mặc định 1.0, 0=thiền sư, 3=điên loạn).
+  - Nhân vào: bonus tầm phát hiện trong đợt, speedBoost (+0.005, vẫn dưới trần 1.2×), hearingBonus (+8 khối), kháng knockback, tỉ lệ gọi bạn, độ nhạy tiếng động (noiseReactionFactor 0.75).
+- **Ban ngày sinh ít hơn 2 lần**: `spawning.daySpawnFactor=0.5` — giữa trưa vẫn có đợt nhưng hàng ngũ thưa hơn đúng 50% (chỉnh được 0→1).
+- `/zombietide status` giờ hiển thị chỉ số bộ não: thông minh × N, điên cuồng × M (ON/dormant).
+
+### Kỹ thuật
+- Tất cả dial đi qua `ZTConfig.intelligence(wave)` / `frenzy()` + helper retarget/unseen/noiseCooldown — đọc live mỗi lần dùng, chỉnh config hiệu lực tức thì.
+- ZTHuntPlayerGoal tự own retarget cadence (không dùng randomInterval cố định của vanilla nữa) + setUnseenMemoryTicks theo wave.
+
 ## 1.1.0 — "They Even Hunt Builders" (2026-07-19)
 
 ### Thêm mới

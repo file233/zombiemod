@@ -35,10 +35,13 @@
 | **Bám theo cả ngưởi chơi chế độ Sáng tạo** | Goal săn tự viết lại (không qua bộ lọc creative của vanilla) + cảm biến + engine sinh đều tôn trọng công tắc; spectator là tùy chọn riêng | `targeting.targetCreativePlayers`, `targeting.targetSpectators`, `spawning.pressureCreativePlayers` |
 | **Máu zombie tối đa = ngưởi chơi + 5 tim** | Trần `MAX_HEALTH` = maxHealth ngưởi chơi gần nhất + `healthMaxHeartsAbovePlayer` (mặc định 5 tim → trâu nhất 15 tim); tăng dần theo đợt nhưng không bao giờ qua trần | `zombies.healthBaseHearts`, `healthPerWaveHearts`, `healthMaxHeartsAbovePlayer` |
 | **Chỉnh khoảng cách/độ dài TỪNG ĐỢT** | Override theo đợt: `"đợt=giây"` trong config + lệnh `/zombietide interval <đợt> [giây|clear]`, `/zombietide duration …` — áp dụng ngay vào đếm ngược đang chạy | `waves.intervalOverrides`, `durationOverrides`, `calmMinutesPerWave` |
+| **Chỉnh ĐỘ THÔNG MINH zombie** | Nhóm `intelligence.*`: tăng theo đợt, ảnh hưởng tầm phát hiện, bán kính nghe, độ trễ phản ứng, tốc độ re-target, trí nhớ mục tiêu | `intelligence.baseLevel=1`, `perWaveBonus=0.04`, `unseenMemoryTicks=60` |
+| **Chỉnh ĐỘ ĐIÊN CUỒNG trong đợt** | Nhóm `frenzy.*`: một multipler nhân mọi buff trong đợt (tầm phát hiện, tốc độ (+trần), thính giác, KBR, gọi bạn, phản ứng) | `frenzy.intensity=1`, `speedBoost`, `hearingBonus`, `noiseReactionFactor` |
+| **Ban ngày sinh ít hơn 2 lần** | Hệ số sinh ban ngày so với ban đêm; 0.5 = thưa hơn đúng 50% giữa trưa (đêm vẫn full) | `spawning.daySpawnFactor=0.5` |
 | **HUD cực nhỏ** giữa cạnh trên: thanh tiến trình + đếm **ngày/giờ/phút/giây** | Lớp HUD scale 0.7 mặc định, thởi nhịp tim, màu trạng thái | `hud.*` |
 | Trong đợt HUD **đếm ngược hết đợt** từng giây, hết đợt quay lại đếm ngày | Thanh tiến trình: bình thường "đầy dần", chiến tranh "rỗng dần" | `hud.timeFormat` |
 | **Logo riêng, làm như mod chuyên nghiệp** | Emblem độc quyền 1024² (tay zombie + vòng biohazard), mods.toml đầy đủ | `logo.png` |
-| **Config chỉnh mọi thứ trong game** (ấn Mod → Config) | ~75 khóa trong COMMON + CLIENT, mở qua màn hình cấu hình bản địa của NeoForge, có dịch EN/VI | `zombietide-*.toml` |
+| **Config chỉnh mọi thứ trong game** (ấn Mod → Config) | ~85 khóa trong COMMON + CLIENT, mở qua màn hình cấu hình bản địa của NeoForge, có dịch EN/VI | `zombietide-*.toml` |
 | **Lệnh chỉnh mọi thứ + gọi/reset đợt** | `/zombietide` | xem dưới |
 
 ---
@@ -74,7 +77,7 @@ bình yên (waves.calmMinutes, mặc định 10 phút)
 | `/zombietide duration [n] [giây\|clear]` | xem: mọi ngưởi; sửa: OP | **Độ dài từng đợt**: xem hiệu lực / đặt / xóa override |
 | `/zombietide reset` | OP | **Reset về ngày đầu** (đợt 1, đếm lại từ đầu) |
 | `/zombietide pause` / `resume` | OP | Đóng băng / chạy tiếp chu kỳ |
-| `/zombietide config list [lọc]` | mọi ngưởi | Liệt kê ~75 khóa config |
+| `/zombietide config list [lọc]` | mọi ngưởi | Liệt kê ~85 khóa config |
 | `/zombietide config get <key>` | mọi ngưởi | Đọc giá trị |
 | `/zombietide config set <key> <giá_trị>` | OP | Đổi + **lưu thẳng vào file config**, hiệu lực ngay |
 
@@ -109,7 +112,7 @@ Mọi con số "chuẩn đặc tả" là **mặc định được ghim sẵn**, 
 ## 🛠 Build từ mã nguồn
 
 ```bash
-./gradlew build      # → build/libs/zombietide-1.1.0.jar
+./gradlew build      # → build/libs/zombietide-1.2.0.jar
 ./gradlew runClient  # chạy thử client
 ./gradlew runServer  # chạy thử server headless
 ```
@@ -124,6 +127,6 @@ JAR vào release theo tag.
 
 ## 🇬🇧 English summary
 
-**ZombieTide** turns survival into an escalating siege: 50 waves (first = 8 minutes, each +2 minutes), 5-second air-raid sirene before every assault, zombies that hunt by sound and smell (no line-of-sight needed), siege spawning that works at high noon, sunburn immunity mid-wave, 2-heart damage cap, 1.2× player speed cap, armorless block-carrying ghouls, block-breaking from wave 20, weighted harmful-effect bites, blood splattering across your screen under a layered red blur, zombies that stalk even creative-mode players, zombie health hard-capped at player + 5 hearts, per-wave calm-gap & duration overrides (config + `/zombietide interval|duration`), and a tiny top-center HUD counting days/hours/minutes/seconds. Everything — every radius, cap, chance, list, per-wave timing — is tunable live, via `/zombietide config` or the NeoForge config screen.
+**ZombieTide** turns survival into an escalating siege: 50 waves (first = 8 minutes, each +2 minutes), 5-second air-raid sirene before every assault, zombies that hunt by sound and smell (no line-of-sight needed), siege spawning that works at high noon, sunburn immunity mid-wave, 2-heart damage cap, 1.2× player speed cap, armorless block-carrying ghouls, block-breaking from wave 20, weighted harmful-effect bites, blood splattering across your screen under a layered red blur, zombies that stalk even creative-mode players, zombie health hard-capped at player + 5 hearts, per-wave calm-gap & duration overrides (config + `/zombietide interval|duration`), tuning dials for zombie intelligence (×reach, memory, reaction) and wave frenzy (×all rage boosts), daylight spawning thinned to half of night, and a tiny top-center HUD counting days/hours/minutes/seconds. Everything — every radius, cap, chance, list, per-wave timing — is tunable live, via `/zombietide config` or the NeoForge config screen.
 
 <p align="center"><i>“Bạn không trốn được thứ nghe thấy bạn.”</i></p>

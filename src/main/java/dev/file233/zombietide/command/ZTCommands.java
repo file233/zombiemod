@@ -144,6 +144,10 @@ public final class ZTCommands {
         }
         send(ctx, ChatFormatting.GRAY, Component.translatable(
                 "command.zombietide.status.detail", manager.zombiesAlive(), d.completed));
+        boolean rageOn = d.phase == WaveData.PHASE_ACTIVE && !d.paused;
+        send(ctx, ChatFormatting.LIGHT_PURPLE, Component.translatable(
+                rageOn ? "command.zombietide.status.mind_active" : "command.zombietide.status.mind_calm",
+                formatMinutes(ZTConfig.intelligence(d.wave)), formatMinutes(ZTConfig.frenzy())));
         return 1;
     }
 

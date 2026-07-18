@@ -86,7 +86,7 @@ public final class ZombieMutation {
 
     // ------------------------------------------------------------------ flesh
     private static void applyAttributes(Zombie zombie, int wave, boolean waveActive) {
-        setBase(zombie, Attributes.MOVEMENT_SPEED, ZTConfig.zombieSpeed(wave));
+        setBase(zombie, Attributes.MOVEMENT_SPEED, ZTConfig.zombieSpeed(wave, waveActive));
         setBase(zombie, Attributes.FOLLOW_RANGE, ZTConfig.followRange(wave, waveActive));
 
         // ---- damage: grows with the waves, never breaches the 2-heart law ----
@@ -118,11 +118,12 @@ public final class ZombieMutation {
 
         int fromWave = ZTConfig.Z_REINFORCEMENT_FROM_WAVE.get();
         double reinforcements = wave >= fromWave
-                ? Math.min(ZTConfig.Z_REINFORCEMENT_CAP.get(), 0.1D + wave * ZTConfig.Z_REINFORCEMENT_PER_WAVE.get())
+                ? Math.min(ZTConfig.Z_REINFORCEMENT_CAP.get(),
+                        (0.1D + wave * ZTConfig.Z_REINFORCEMENT_PER_WAVE.get()) * (waveActive ? 1.0D + 0.5D * ZTConfig.frenzy() : 1.0D))
                 : 0.1D; // vanilla default
         setBase(zombie, Attributes.SPAWN_REINFORCEMENTS_CHANCE, reinforcements);
 
-        double kbr = waveActive ? Math.min(0.4D, wave * ZTConfig.Z_KBR_PER_WAVE.get()) : 0.0D;
+        double kbr = waveActive ? Math.min(0.4D, wave * ZTConfig.Z_KBR_PER_WAVE.get() * ZTConfig.frenzy()) : 0.0D;
         setBase(zombie, Attributes.KNOCKBACK_RESISTANCE, kbr);
     }
 

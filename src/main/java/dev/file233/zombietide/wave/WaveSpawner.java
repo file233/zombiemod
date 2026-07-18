@@ -51,6 +51,11 @@ public final class WaveSpawner {
     }
 
     private static void spawnCycleFor(ServerLevel level, ServerPlayer player, int wave) {
+        // daylight thins the ranks: by default only half as many spawns while the sun is up
+        double dayFactor = level.isDay() ? ZTConfig.S_DAY_SPAWN_FACTOR.get() : 1.0D;
+        if (dayFactor <= 0.0D) return;
+        if (dayFactor < 1.0D && level.getRandom().nextDouble() > dayFactor) return;
+
         int cap = ZTConfig.zombieCap(wave);
         int nearby = level.getEntitiesOfClass(Zombie.class, player.getBoundingBox().inflate(96.0D, 32.0D, 96.0D)).size();
         if (nearby >= cap) return;
