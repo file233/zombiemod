@@ -1,0 +1,80 @@
+name: Build ZombieTide
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      make_release:
+        description: 'Create a GitHub Release with the built jar'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+      release_tag:
+        description: 'Tag for the release (e.g. v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Build the mod jar
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace build
+
+      - name: Upload jar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zombietide-jar
+          path: build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Rename jar artifact copy
+        run: |
+          mkdir -p dist && cp build/libs/zombietide-*.jar dist/ && ls -la dist build/libs
+
+      - name: Create GitHub Release (tag push)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          gh release create "$TAG" build/libs/*.jar \
+            --title "ZombieTide $TAG" \
+            --notes-file CHANGELOG.md \
+            --verify-tag || \
+          gh release upload "$TAG" build/libs/*.jar --clobber
+
+      - name: Create GitHub Release (manual dispatch)
+        if: github.event_name == 'workflow_dispatch' && inputs.make_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ inputs.release_tag }}"
+          gh release create "$TAG" build/libs/*.jar \
+            --title "ZombieTide $TAG" \
+            --notes-file CHANGELOG.md \
+            --target "${GITHUB_SHA}" || \
+          gh release upload "$TAG" build/libs/*.jar --clobber

@@ -1,0 +1,11 @@
+{
+  "wave_alarm": {
+    "subtitle": "subtitles.zombietide.wave_alarm",
+    "sounds": [
+      {
+        "name": "zombietide:wave_alarm",
+        "stream": false
+      }
+    ]
+  }
+}

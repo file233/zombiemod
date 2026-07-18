@@ -1,0 +1,578 @@
+package dev.file233.zombietide.config;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+
+import com.mojang.logging.LogUtils;
+
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.neoforged.fml.event.config.ModConfigEvent;
+import net.neoforged.neoforge.common.ModConfigSpec;
+
+/**
+ * Single source of truth for every tunable in ZombieTide.
+ *
+ * <p>All values live in a NeoForge COMMON spec, so they are:
+ * <ul>
+ *   <li>editable via the in-game config screen (Mod List &rarr; ZombieTide &rarr; Config),</li>
+ *   <li>editable via {@code /zombietide config set <key> <value>} (persisted to the file),</li>
+ *   <li>readable live — systems read through this class every time they need a value.</li>
+ * </ul>
+ *
+ * Numeric balance knobs that the design brief pins down are defaulted exactly to spec:
+ * 8-minute first wave, +2 minutes per wave, 50 waves, 2-heart damage cap, 1.2x player speed,
+ * block-breaking from wave 20-only, near-zero spawn rates for variants/other hostiles mid-wave.
+ */
+public final class ZTConfig {
+    private static final Logger LOGGER = LogUtils.getLogger();
+    private ZTConfig() {}
+
+    /** What happens after the final configured wave ends. */
+    public enum AfterLastWave { CONTINUE, LOOP, STOP }
+
+    // ------------------------------------------------------------------ spec
+    public static final ModConfigSpec SPEC;
+
+    // general
+    public static final ModConfigSpec.BooleanValue ENABLED;
+
+    // waves
+    public static final ModConfigSpec.IntValue MAX_WAVES;
+    public static final ModConfigSpec.DoubleValue FIRST_WAVE_MINUTES;
+    public static final ModConfigSpec.DoubleValue WAVE_INCREMENT_MINUTES;
+    public static final ModConfigSpec.DoubleValue CALM_MINUTES;
+    public static final ModConfigSpec.DoubleValue ALARM_SECONDS;
+    public static final ModConfigSpec.ConfigValue<String> ALARM_SOUND;
+    public static final ModConfigSpec.DoubleValue ALARM_VOLUME;
+    public static final ModConfigSpec.ConfigValue<AfterLastWave> AFTER_LAST_WAVE;
+    public static final ModConfigSpec.BooleanValue CHAT_ANNOUNCE;
+    public static final ModConfigSpec.BooleanValue TITLE_ANNOUNCE;
+
+    // zombies
+    public static final ModConfigSpec.DoubleValue Z_BASE_SPEED;
+    public static final ModConfigSpec.DoubleValue Z_MAX_SPEED;
+    public static final ModConfigSpec.DoubleValue Z_SPEED_PER_WAVE;
+    public static final ModConfigSpec.DoubleValue Z_FOLLOW_RANGE;
+    public static final ModConfigSpec.DoubleValue Z_FOLLOW_PER_WAVE;
+    public static final ModConfigSpec.DoubleValue Z_FOLLOW_CAP;
+    public static final ModConfigSpec.DoubleValue Z_FOLLOW_WAVE_BONUS;
+    public static final ModConfigSpec.BooleanValue Z_HUNT_WITHOUT_SIGHT;
+    public static final ModConfigSpec.DoubleValue Z_MAX_DAMAGE_HEARTS;
+    public static final ModConfigSpec.DoubleValue Z_KBR_PER_WAVE;
+    public static final ModConfigSpec.IntValue Z_REINFORCEMENT_FROM_WAVE;
+    public static final ModConfigSpec.DoubleValue Z_REINFORCEMENT_PER_WAVE;
+    public static final ModConfigSpec.DoubleValue Z_REINFORCEMENT_CAP;
+    public static final ModConfigSpec.DoubleValue Z_HEARING_RADIUS;
+    public static final ModConfigSpec.DoubleValue Z_HEARING_PER_WAVE;
+    public static final ModConfigSpec.DoubleValue Z_HEARING_CAP;
+    public static final ModConfigSpec.IntValue Z_NOISE_COOLDOWN_TICKS;
+    public static final ModConfigSpec.BooleanValue Z_STRIP_ARMOR;
+    public static final ModConfigSpec.BooleanValue Z_BLOCK_ITEMS_ONLY;
+    public static final ModConfigSpec.DoubleValue Z_HELD_BLOCK_CHANCE;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> Z_HELD_BLOCKS;
+    public static final ModConfigSpec.IntValue Z_BLOCK_BREAK_FROM_WAVE;
+    public static final ModConfigSpec.DoubleValue Z_BLOCK_BREAK_CHANCE;
+    public static final ModConfigSpec.DoubleValue Z_BLOCK_BREAK_MAX_HARDNESS;
+    public static final ModConfigSpec.IntValue Z_BLOCK_BREAK_COOLDOWN;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> Z_BLOCK_BREAK_BLACKLIST;
+    public static final ModConfigSpec.BooleanValue Z_BLOCK_BREAK_ONLY_WAVES;
+    public static final ModConfigSpec.BooleanValue Z_NO_BURN_IN_WAVES;
+    public static final ModConfigSpec.DoubleValue Z_BABY_KEEP_CHANCE;
+    public static final ModConfigSpec.DoubleValue Z_VARIANT_KEEP_CHANCE;
+    public static final ModConfigSpec.DoubleValue Z_NON_ZOMBIE_KEEP_CHANCE;
+    public static final ModConfigSpec.BooleanValue Z_CONVERT_VARIANTS;
+
+    // spawning
+    public static final ModConfigSpec.BooleanValue S_ENABLED;
+    public static final ModConfigSpec.IntValue S_INTERVAL_TICKS;
+    public static final ModConfigSpec.IntValue S_ATTEMPTS_PER_CYCLE;
+    public static final ModConfigSpec.IntValue S_RING_MIN;
+    public static final ModConfigSpec.IntValue S_RING_MAX;
+    public static final ModConfigSpec.IntValue S_CAP_PER_PLAYER;
+    public static final ModConfigSpec.DoubleValue S_CAP_PER_WAVE;
+    public static final ModConfigSpec.IntValue S_CAP_MAX;
+    public static final ModConfigSpec.BooleanValue S_DAYLIGHT_SPAWN;
+    public static final ModConfigSpec.BooleanValue S_BOOST_NATURAL_PLACEMENT;
+    public static final ModConfigSpec.DoubleValue S_SURFACE_CHANCE;
+    public static final ModConfigSpec.BooleanValue S_IGNORE_GAMERULE;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> S_DIMENSIONS;
+
+    // effects
+    public static final ModConfigSpec.DoubleValue E_PROC_CHANCE;
+    public static final ModConfigSpec.BooleanValue E_ONLY_DURING_WAVES;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> E_LIST;
+
+    static {
+        ModConfigSpec.Builder b = new ModConfigSpec.Builder();
+
+        b.translation("zombietide.configuration.general").push("general");
+        ENABLED = b.comment(
+                "Master switch. When false the mod is completely inert.",
+                "Công tắc tổng của mod.")
+                .translation("zombietide.configuration.enabled")
+                .define("enabled", true);
+        b.pop();
+
+        // ------------------------------------------------------------------ waves
+        b.translation("zombietide.configuration.waves").push("waves");
+        MAX_WAVES = b.comment("Total number of waves. Default 50, exactly as designed.",
+                "Tổng số đợt tấn công (mặc định 50).")
+                .translation("zombietide.configuration.maxWaves")
+                .defineInRange("maxWaves", 50, 1, 1000);
+        FIRST_WAVE_MINUTES = b.comment("Duration of wave #1, in minutes. Default 8.",
+                "Thởi gian (phút) của đợt đầu tiên. Mặc định 8.")
+                .translation("zombietide.configuration.firstWaveMinutes")
+                .defineInRange("firstWaveMinutes", 8.0D, 0.5D, 240.0D);
+        WAVE_INCREMENT_MINUTES = b.comment("Each wave lasts this many minutes longer than the previous. Default 2.",
+                "Mỗi đợt sau dài hơn đợt trước bấy nhiêu phút. Mặc định 2.")
+                .translation("zombietide.configuration.waveIncrementMinutes")
+                .defineInRange("waveIncrementMinutes", 2.0D, 0.0D, 120.0D);
+        CALM_MINUTES = b.comment("Peace time between two waves, in minutes (the HUD counts this down as days/hours/minutes/seconds).",
+                "Thởi gian bình yên giữa hai đợt, tính bằng phút.")
+                .translation("zombietide.configuration.calmMinutes")
+                .defineInRange("calmMinutes", 10.0D, 0.25D, 10080.0D);
+        ALARM_SECONDS = b.comment("Seconds of alarm sirene before a wave begins. Default 5.",
+                "Số giây còi báo động trước khi đợt bắt đầu. Mặc định 5.")
+                .translation("zombietide.configuration.alarmSeconds")
+                .defineInRange("alarmSeconds", 5.0D, 1.0D, 30.0D);
+        ALARM_SOUND = b.comment("Sound event id played as the wave alarm.",
+                "Âm thanh báo động.")
+                .translation("zombietide.configuration.alarmSound")
+                .define("alarmSound", "zombietide:wave_alarm");
+        ALARM_VOLUME = b.comment("Alarm volume (also controls how far it can be heard).",
+                "Âm lượng báo động.")
+                .translation("zombietide.configuration.alarmVolume")
+                .defineInRange("alarmVolume", 1.0D, 0.1D, 4.0D);
+        AFTER_LAST_WAVE = b.comment("After the final wave: CONTINUE = endless max-intensity waves, LOOP = restart from wave 1, STOP = the apocalypse is survived.",
+                "Sau đợt cuối: CONTINUE (lặp đợt cuối vô hạn) / LOOP (quay lại đợt 1) / STOP (dừng hẳn).")
+                .translation("zombietide.configuration.afterLastWave")
+                .defineEnum("afterLastWave", AfterLastWave.CONTINUE);
+        CHAT_ANNOUNCE = b.comment("Announce wave start/end in chat.",
+                "Thông báo đợt trong khung chat.").translation("zombietide.configuration.chatAnnounce").define("chatAnnounce", true);
+        TITLE_ANNOUNCE = b.comment("Show a big title on wave start/end.",
+                "Hiện tiêu đề lớn khi đợt bắt đầu/kết thúc.").translation("zombietide.configuration.titleAnnounce").define("titleAnnounce", true);
+        b.pop();
+
+        // ------------------------------------------------------------------ zombies
+        b.translation("zombietide.configuration.zombies").push("zombies");
+        Z_BASE_SPEED = b.comment("Baseline movement-speed attribute of wave zombies. Player walking = 0.1.",
+                "Tốc độ cơ bản của zombie (0.1 = tốc độ đi bộ của ngưởi chơi).")
+                .translation("zombietide.configuration.baseSpeed")
+                .defineInRange("baseSpeed", 0.10D, 0.01D, 1.0D);
+        Z_MAX_SPEED = b.comment("HARD CAP for zombie speed: 0.12 is exactly 1.2x the player base speed.",
+                "Trần tốc độ tuyệt đối của zombie: 0.12 = nhanh hơn ngưởi chơi đúng 0.2 lần.")
+                .translation("zombietide.configuration.maxSpeed")
+                .defineInRange("maxSpeed", 0.12D, 0.01D, 1.0D);
+        Z_SPEED_PER_WAVE = b.comment("Speed gained per completed wave (never exceeds maxSpeed).",
+                "Tốc độ tăng thêm sau mỗi đợt (không vượt quá maxSpeed).")
+                .translation("zombietide.configuration.speedPerWave")
+                .defineInRange("speedPerWave", 0.0008D, 0.0D, 0.05D);
+        Z_FOLLOW_RANGE = b.comment("Baseline target detection range (blocks).",
+                "Tầm phát hiện mục tiêu cơ bản (khối).")
+                .translation("zombietide.configuration.followRange")
+                .defineInRange("followRange", 40.0D, 8.0D, 512.0D);
+        Z_FOLLOW_PER_WAVE = b.comment("Target range gained per wave.",
+                "Tầm phát hiện tăng mỗi đợt.")
+                .translation("zombietide.configuration.followRangePerWave")
+                .defineInRange("followRangePerWave", 1.5D, 0.0D, 32.0D);
+        Z_FOLLOW_CAP = b.comment("Target range hard cap.",
+                "Trần tầm phát hiện.")
+                .translation("zombietide.configuration.followRangeCap")
+                .defineInRange("followRangeCap", 128.0D, 16.0D, 512.0D);
+        Z_FOLLOW_WAVE_BONUS = b.comment("Extra target range while a wave is active.",
+                "Tầm phát hiện cộng thêm khi đợt đang diễn ra.")
+                .translation("zombietide.configuration.waveFollowBonus")
+                .defineInRange("waveFollowBonus", 16.0D, 0.0D, 128.0D);
+        Z_HUNT_WITHOUT_SIGHT = b.comment("Zombies acquire players even without line of sight (hearing/smell).",
+                "Zombie đuổi theo kể cả khi không nhìn thấy (bằng mũỉ + tai).")
+                .translation("zombietide.configuration.huntWithoutSight")
+                .define("huntWithoutSight", true);
+        Z_MAX_DAMAGE_HEARTS = b.comment("HARD CAP of zombie melee damage against players, in HEARTS. Default 2 hearts.",
+                "Sát thương tối đa của zombie lên ngưởi chơi, tính theo TIM. Mặc định 2 tim.")
+                .translation("zombietide.configuration.maxDamageHearts")
+                .defineInRange("maxDamageHearts", 2.0D, 0.5D, 20.0D);
+        Z_KBR_PER_WAVE = b.comment("Knockback resistance gained per wave (during waves).",
+                "Kháng knockback tăng theo đợt.")
+                .translation("zombietide.configuration.knockbackResistancePerWave")
+                .defineInRange("knockbackResistancePerWave", 0.02D, 0.0D, 0.1D);
+        Z_REINFORCEMENT_FROM_WAVE = b.comment("From this wave on, hurt zombies can call reinforcements.",
+                "Từ đợt này zombie bị đánh có thể gọi bạn.")
+                .translation("zombietide.configuration.reinforcementFromWave")
+                .defineInRange("reinforcementFromWave", 6, 1, 1000);
+        Z_REINFORCEMENT_PER_WAVE = b.comment("Reinforcement chance gained per wave.",
+                "Tỉ lệ gọi bạn tăng mỗi đợt.")
+                .translation("zombietide.configuration.reinforcementPerWave")
+                .defineInRange("reinforcementPerWave", 0.005D, 0.0D, 0.2D);
+        Z_REINFORCEMENT_CAP = b.comment("Reinforcement chance cap.",
+                "Trần tỉ lệ gọi bạn.")
+                .translation("zombietide.configuration.reinforcementCap")
+                .defineInRange("reinforcementCap", 0.35D, 0.0D, 1.0D);
+        Z_HEARING_RADIUS = b.comment("Radius (blocks) in which zombies hear noises you make.",
+                "Bán kính zombie nghe được tiếng động.").translation("zombietide.configuration.hearingRadius").defineInRange("hearingRadius", 24.0D, 4.0D, 256.0D);
+        Z_HEARING_PER_WAVE = b.comment("Hearing radius gained per wave.",
+                "Bán kính nghe tăng mỗi đợt.").translation("zombietide.configuration.hearingPerWave").defineInRange("hearingPerWave", 1.0D, 0.0D, 16.0D);
+        Z_HEARING_CAP = b.comment("Hearing radius cap.",
+                "Trần bán kính nghe.").translation("zombietide.configuration.hearingCap").defineInRange("hearingCap", 96.0D, 8.0D, 256.0D);
+        Z_NOISE_COOLDOWN_TICKS = b.comment("Per-zombie re-trigger cooldown for sound alerts.",
+                "Thởi gian hồi phản ứng tiếng động của mỗi zombie.")
+                .translation("zombietide.configuration.noiseCooldownTicks")
+                .defineInRange("noiseCooldownTicks", 35, 5, 600);
+        Z_STRIP_ARMOR = b.comment("Zombies never wear armor (forced every spawn).",
+                "Zombie không bao giờ mặc giáp.").translation("zombietide.configuration.stripArmor").define("stripArmor", true);
+        Z_BLOCK_ITEMS_ONLY = b.comment("Zombies may only hold BLOCK items (found held weapons are removed).",
+                "Zombie chỉ được cầm KHỐI (vũ khí sẽ bị tước).").translation("zombietide.configuration.allowOnlyBlockItems").define("allowOnlyBlockItems", true);
+        Z_HELD_BLOCK_CHANCE = b.comment("Chance a zombie spawns holding a random block.",
+                "Tỉ lệ zombie sinh ra cầm khối.").translation("zombietide.configuration.heldBlockChance").defineInRange("heldBlockChance", 0.35D, 0.0D, 1.0D);
+        Z_HELD_BLOCKS = b.comment("Blocks zombies can be holding.",
+                "Danh sách khối zombie có thể cầm.").translation("zombietide.configuration.heldBlocks").defineListAllowEmpty("heldBlocks",
+                () -> List.of("minecraft:dirt", "minecraft:oak_planks", "minecraft:cobblestone",
+                        "minecraft:glass", "minecraft:oak_log", "minecraft:sand", "minecraft:gravel",
+                        "minecraft:bricks", "minecraft:glass_pane", "minecraft:oak_door"),
+                o -> o instanceof String s && ResourceLocation.tryParse(s) != null);
+        Z_BLOCK_BREAK_FROM_WAVE = b.comment("From this wave on some zombies break blocks. Default 20.",
+                "Từ đợt này một số zombie có thể phá khối. Mặc định 20.")
+                .translation("zombietide.configuration.blockBreakFromWave")
+                .defineInRange("blockBreakFromWave", 20, 1, 1000);
+        Z_BLOCK_BREAK_CHANCE = b.comment("Chance any given zombie gets the block-breaking behaviour.",
+                "Tỉ lệ zombie có khả năng phá khối.").translation("zombietide.configuration.blockBreakChance").defineInRange("blockBreakChance", 0.35D, 0.0D, 1.0D);
+        Z_BLOCK_BREAK_MAX_HARDNESS = b.comment("Maximum block hardness zombies can chew through.",
+                "Độ cứng tối đa zombie có thể phá.").translation("zombietide.configuration.blockBreakMaxHardness").defineInRange("blockBreakMaxHardness", 4.0D, 0.1D, 20.0D);
+        Z_BLOCK_BREAK_COOLDOWN = b.comment("Ticks a zombie waits after breaking a block.",
+                "Thởi gian nghỉ giữa hai lần phá khối.").translation("zombietide.configuration.blockBreakCooldownTicks").defineInRange("blockBreakCooldownTicks", 30, 5, 600);
+        Z_BLOCK_BREAK_BLACKLIST = b.comment("Blocks zombies will never break.",
+                "Khối zombie không bao giờ phá.").translation("zombietide.configuration.blockBreakBlacklist").defineListAllowEmpty("blockBreakBlacklist",
+                () -> List.of("minecraft:obsidian", "minecraft:crying_obsidian", "minecraft:reinforced_deepslate",
+                        "minecraft:bedrock", "minecraft:end_portal_frame", "minecraft:barrier", "minecraft:chest"),
+                o -> o instanceof String s && ResourceLocation.tryParse(s) != null);
+        Z_BLOCK_BREAK_ONLY_WAVES = b.comment("If true, block breaking only happens while a wave runs.",
+                "Chỉ phá khối khi đang trong đợt.").translation("zombietide.configuration.blockBreakOnlyDuringWaves").define("blockBreakOnlyDuringWaves", false);
+        Z_NO_BURN_IN_WAVES = b.comment("Zombies do not burn in sunlight while a wave is active.",
+                "Zombie không bị nắng thiêu đốt khi đợt đang diễn ra.").translation("zombietide.configuration.noBurningDuringWaves").define("noBurningDuringWaves", true);
+        Z_BABY_KEEP_CHANCE = b.comment("During waves: chance a baby zombie is allowed to exist (else converted to adult).",
+                "Tỉ lệ zombie con được giữ lại trong đợt.").translation("zombietide.configuration.babyKeepChance").defineInRange("babyKeepChance", 0.02D, 0.0D, 1.0D);
+        Z_VARIANT_KEEP_CHANCE = b.comment("During waves: chance drowned/husk/zombie-villager spawns are kept (else replaced by a plain zombie).",
+                "Tỉ lệ biến thể zombie (nước/sa mạc/làng) được giữ lại trong đợt.").translation("zombietide.configuration.variantKeepChance").defineInRange("variantKeepChance", 0.02D, 0.0D, 1.0D);
+        Z_NON_ZOMBIE_KEEP_CHANCE = b.comment("During waves: chance any OTHER hostile mob may spawn (skeletons, creepers...).",
+                "Tỉ lệ quái gây hại khác được sinh ra trong đợt.").translation("zombietide.configuration.nonZombieKeepChance").defineInRange("nonZombieKeepChance", 0.02D, 0.0D, 1.0D);
+        Z_CONVERT_VARIANTS = b.comment("Convert drowned/husk/zombie-villager into plain zombies while a wave runs.",
+                "Biến mọi biến thể thành zombie thường khi trong đợt.").translation("zombietide.configuration.convertVariants").define("convertVariants", true);
+        b.pop();
+
+        // ------------------------------------------------------------------ spawning
+        b.translation("zombietide.configuration.spawning").push("spawning");
+        S_ENABLED = b.comment("Enable the wave spawn engine (keeps horde pressure up, even by day).",
+                "Bật động cơ sinh zombie theo đợt.").translation("zombietide.configuration.enabled").define("enabled", true);
+        S_INTERVAL_TICKS = b.comment("Ticks between spawn cycles per player (20 = 1s).",
+                "Tick giữa hai chu kỳ sinh (20 = 1 giây).").translation("zombietide.configuration.intervalTicks").defineInRange("intervalTicks", 40, 5, 1200);
+        S_ATTEMPTS_PER_CYCLE = b.comment("Spawn position attempts per cycle.",
+                "Số lần thử sinh mỗi chu kỳ.").translation("zombietide.configuration.attemptsPerCycle").defineInRange("attemptsPerCycle", 6, 1, 64);
+        S_RING_MIN = b.comment("Minimum distance from the player for engine spawns.",
+                "Khoảng cách tối thiểu tới ngưởi chơi.").translation("zombietide.configuration.ringMinDistance").defineInRange("ringMinDistance", 24, 8, 96);
+        S_RING_MAX = b.comment("Maximum distance from the player for engine spawns.",
+                "Khoảng cách tối đa tới ngưởi chơi.").translation("zombietide.configuration.ringMaxDistance").defineInRange("ringMaxDistance", 48, 16, 128);
+        S_CAP_PER_PLAYER = b.comment("Baseline alive-zombie cap per player during waves.",
+                "Trần zombie sống quanh mỗi ngưởi chơi.").translation("zombietide.configuration.capPerPlayer").defineInRange("capPerPlayer", 12, 1, 256);
+        S_CAP_PER_WAVE = b.comment("Cap growth per wave.",
+                "Trần tăng thêm mỗi đợt.").translation("zombietide.configuration.capPerPlayerPerWave").defineInRange("capPerPlayerPerWave", 0.5D, 0.0D, 16.0D);
+        S_CAP_MAX = b.comment("Absolute alive-zombie cap per player.",
+                "Trần tuyệt đối.").translation("zombietide.configuration.capMax").defineInRange("capMax", 48, 1, 512);
+        S_DAYLIGHT_SPAWN = b.comment("Zombies may spawn in full daylight while a wave runs.",
+                "Cho phép zombie sinh ban ngày khi đang trong đợt.").translation("zombietide.configuration.daylightSpawn").define("daylightSpawn", true);
+        S_BOOST_NATURAL_PLACEMENT = b.comment("Also force-allow vanilla natural zombie spawns (ignores light) during waves.",
+                "Luôn cho phép cơ chế sinh tự nhiên bỏ qua ánh sáng khi trong đợt.").translation("zombietide.configuration.boostNaturalPlacement").define("boostNaturalPlacement", true);
+        S_SURFACE_CHANCE = b.comment("Chance a spawn attempt targets the surface (else caves around the player).",
+                "Tỉ lệ thử sinh trên mặt đất.").translation("zombietide.configuration.surfaceChance").defineInRange("surfaceChance", 0.6D, 0.0D, 1.0D);
+        S_IGNORE_GAMERULE = b.comment("Spawn even when the doMobSpawning gamerule is false.",
+                "Bỏ qua gamerule doMobSpawning.").translation("zombietide.configuration.ignoreDoMobSpawningRule").define("ignoreDoMobSpawningRule", false);
+        S_DIMENSIONS = b.comment("Dimensions where waves and the spawn engine apply.",
+                "Các chiều (dimension) áp dụng hệ thống đợt.").translation("zombietide.configuration.dimensions").defineListAllowEmpty("dimensions",
+                () -> List.of("minecraft:overworld"), o -> o instanceof String s && ResourceLocation.tryParse(s) != null);
+        b.pop();
+
+        // ------------------------------------------------------------------ effects
+        b.translation("zombietide.configuration.effects").push("effects");
+        E_PROC_CHANCE = b.comment("Chance a zombie hit applies a random harmful effect.",
+                "Tỉ lệ nhận hiệu ứng xấu khi bị zombie đánh.").translation("zombietide.configuration.procChance").defineInRange("procChance", 0.35D, 0.0D, 1.0D);
+        E_ONLY_DURING_WAVES = b.comment("Apply harmful effects only while a wave is running.",
+                "Chỉ gây hiệu ứng khi trong đợt.").translation("zombietide.configuration.onlyDuringWaves").define("onlyDuringWaves", false);
+        E_LIST = b.comment(
+                "Effect pool. Format: effect_id|min_seconds|max_seconds|min_wave|weight",
+                "id: minecraft vanilla effect (slowness, weakness, poison, blindness, nausea, ...),",
+                "min_wave: earliest wave this effect can appear in; weight: relative probability.")
+                .translation("zombietide.configuration.list")
+                .defineListAllowEmpty("list", () -> List.of(
+                        "minecraft:slowness|4|8|1|40",
+                        "minecraft:weakness|4|10|1|30",
+                        "minecraft:mining_fatigue|5|10|3|25",
+                        "minecraft:nausea|4|8|5|20",
+                        "minecraft:blindness|3|6|8|18",
+                        "minecraft:poison|3|6|10|14",
+                        "minecraft:hunger|5|12|12|12",
+                        "minecraft:wither|2|4|30|6",
+                        "minecraft:darkness|4|8|40|5"),
+                        o -> o instanceof String);
+        b.pop();
+
+        SPEC = b.build();
+    }
+
+    // ------------------------------------------------------------------ live helpers
+    public static boolean enabled() { return ENABLED.get(); }
+
+    /** Wave duration in ticks for the given wave number (1-based). */
+    public static long waveDurationTicks(int wave) {
+        double minutes = FIRST_WAVE_MINUTES.get() + Math.max(0, wave - 1) * WAVE_INCREMENT_MINUTES.get();
+        return Math.max(100L, Math.round(minutes * 1200.0D));
+    }
+
+    public static long calmTicks() {
+        return Math.max(100L, Math.round(CALM_MINUTES.get() * 1200.0D));
+    }
+
+    public static int alarmTicks() {
+        return Math.max(20, (int) Math.round(ALARM_SECONDS.get() * 20.0D));
+    }
+
+    public static double maxZombieDamage() {
+        return Z_MAX_DAMAGE_HEARTS.get() * 2.0D; // hearts -> health points
+    }
+
+    public static double zombieSpeed(int wave) {
+        return Math.min(Z_MAX_SPEED.get(), Z_BASE_SPEED.get() + Math.max(0, wave - 1) * Z_SPEED_PER_WAVE.get());
+    }
+
+    public static double followRange(int wave, boolean waveActive) {
+        double v = Z_FOLLOW_RANGE.get() + Math.max(0, wave) * Z_FOLLOW_PER_WAVE.get() + (waveActive ? Z_FOLLOW_WAVE_BONUS.get() : 0.0D);
+        return Math.min(Z_FOLLOW_CAP.get(), v);
+    }
+
+    public static double hearingRadius(int wave) {
+        return Math.min(Z_HEARING_CAP.get(), Z_HEARING_RADIUS.get() + Math.max(0, wave) * Z_HEARING_PER_WAVE.get());
+    }
+
+    public static int zombieCap(int wave) {
+        int v = S_CAP_PER_PLAYER.get() + (int) Math.floor(Math.max(0, wave) * S_CAP_PER_WAVE.get());
+        return Math.min(S_CAP_MAX.get(), v);
+    }
+
+    public static boolean blockBreakingAllowedNow(int wave, boolean waveActive) {
+        if (wave < Z_BLOCK_BREAK_FROM_WAVE.get()) return false;
+        return !Z_BLOCK_BREAK_ONLY_WAVES.get() || waveActive;
+    }
+
+    public static ResourceLocation alarmSoundId() {
+        ResourceLocation rl = ResourceLocation.tryParse(ALARM_SOUND.get());
+        return rl != null ? rl : ResourceLocation.fromNamespaceAndPath("zombietide", "wave_alarm");
+    }
+
+    // ------------------------------------------------------------------ parsed caches
+    private static volatile List<Item> heldBlocksCache = null;
+    private static volatile Set<Block> breakBlacklistCache = null;
+    private static volatile Set<ResourceKey<Level>> dimensionCache = null;
+    private static volatile List<EffectRoll> effectRollCache = null;
+
+    public static void onConfigLoaded(ModConfigEvent.Loading e) { invalidateCaches(); }
+
+    public static void onConfigReloaded(ModConfigEvent.Reloading e) { invalidateCaches(); }
+
+    public static void invalidateCaches() {
+        heldBlocksCache = null;
+        breakBlacklistCache = null;
+        dimensionCache = null;
+        effectRollCache = null;
+    }
+
+    public static List<Item> heldBlocks() {
+        List<Item> c = heldBlocksCache;
+        if (c == null) {
+            List<Item> tmp = new ArrayList<>();
+            for (String s : Z_HELD_BLOCKS.get()) {
+                ResourceLocation id = ResourceLocation.tryParse(s);
+                if (id == null) continue;
+                Item item = BuiltInRegistries.ITEM.get(id);
+                if (item instanceof BlockItem && item != null && item != net.minecraft.world.item.Items.AIR) tmp.add(item);
+            }
+            heldBlocksCache = c = tmp.isEmpty() ? List.of(((BlockItem) net.minecraft.world.level.block.Blocks.DIRT.asItem())) : List.copyOf(tmp);
+        }
+        return c;
+    }
+
+    public static Set<Block> breakBlacklist() {
+        Set<Block> c = breakBlacklistCache;
+        if (c == null) {
+            Set<Block> tmp = new LinkedHashSet<>();
+            for (String s : Z_BLOCK_BREAK_BLACKLIST.get()) {
+                ResourceLocation id = ResourceLocation.tryParse(s);
+                if (id != null && BuiltInRegistries.BLOCK.containsKey(id)) tmp.add(BuiltInRegistries.BLOCK.get(id));
+            }
+            breakBlacklistCache = c = Collections.unmodifiableSet(tmp);
+        }
+        return c;
+    }
+
+    public static Set<ResourceKey<Level>> dimensions() {
+        Set<ResourceKey<Level>> c = dimensionCache;
+        if (c == null) {
+            Set<ResourceKey<Level>> tmp = new LinkedHashSet<>();
+            for (String s : S_DIMENSIONS.get()) {
+                ResourceLocation id = ResourceLocation.tryParse(s);
+                if (id != null) tmp.add(ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, id));
+            }
+            if (tmp.isEmpty()) tmp.add(Level.OVERWORLD);
+            dimensionCache = c = Collections.unmodifiableSet(tmp);
+        }
+        return c;
+    }
+
+    public static boolean dimensionAllowed(ResourceKey<Level> dim) {
+        return dimensions().contains(dim);
+    }
+
+    /** One parsed entry of {@code effects.list}. */
+    public static record EffectRoll(ResourceLocation id, int minSec, int maxSec, int minWave, int weight) {}
+
+    public static List<EffectRoll> effectRolls() {
+        List<EffectRoll> c = effectRollCache;
+        if (c == null) {
+            List<EffectRoll> tmp = new ArrayList<>();
+            for (String raw : E_LIST.get()) {
+                String[] parts = raw.split("\\|");
+                if (parts.length != 5) { LOGGER.warn("Bad effect entry '{}', expected id|minS|maxS|minWave|weight", raw); continue; }
+                try {
+                    ResourceLocation id = ResourceLocation.tryParse(parts[0].trim());
+                    if (id == null) { LOGGER.warn("Bad effect id in '{}'", raw); continue; }
+                    tmp.add(new EffectRoll(id,
+                            Math.max(0, Integer.parseInt(parts[1].trim())),
+                            Math.max(0, Integer.parseInt(parts[2].trim())),
+                            Math.max(1, Integer.parseInt(parts[3].trim())),
+                            Math.max(1, Integer.parseInt(parts[4].trim()))));
+                } catch (NumberFormatException ex) {
+                    LOGGER.warn("Bad numeric field in effect entry '{}'", raw);
+                }
+            }
+            effectRollCache = c = List.copyOf(tmp);
+        }
+        return c;
+    }
+
+    @Nullable
+    public static net.minecraft.core.Holder<MobEffect> resolveEffect(ResourceLocation id) {
+        return BuiltInRegistries.MOB_EFFECT.getHolder(id).orElse(null);
+    }
+
+    // ------------------------------------------------------------------ command bridge
+    /** Registry of every scalar option so /zombietide config can reach all of them. */
+    public record BridgeEntry(ModConfigSpec.ConfigValue<?> value, String type) {}
+
+    public static final Map<String, BridgeEntry> BRIDGE;
+
+    static {
+        Map<String, BridgeEntry> m = new LinkedHashMap<>();
+        m.put("general.enabled", new BridgeEntry(ENABLED, "boolean"));
+        m.put("waves.maxWaves", new BridgeEntry(MAX_WAVES, "int"));
+        m.put("waves.firstWaveMinutes", new BridgeEntry(FIRST_WAVE_MINUTES, "double"));
+        m.put("waves.waveIncrementMinutes", new BridgeEntry(WAVE_INCREMENT_MINUTES, "double"));
+        m.put("waves.calmMinutes", new BridgeEntry(CALM_MINUTES, "double"));
+        m.put("waves.alarmSeconds", new BridgeEntry(ALARM_SECONDS, "double"));
+        m.put("waves.alarmSound", new BridgeEntry(ALARM_SOUND, "string"));
+        m.put("waves.alarmVolume", new BridgeEntry(ALARM_VOLUME, "double"));
+        m.put("waves.afterLastWave", new BridgeEntry(AFTER_LAST_WAVE, "enum:AfterLastWave"));
+        m.put("waves.chatAnnounce", new BridgeEntry(CHAT_ANNOUNCE, "boolean"));
+        m.put("waves.titleAnnounce", new BridgeEntry(TITLE_ANNOUNCE, "boolean"));
+        m.put("zombies.baseSpeed", new BridgeEntry(Z_BASE_SPEED, "double"));
+        m.put("zombies.maxSpeed", new BridgeEntry(Z_MAX_SPEED, "double"));
+        m.put("zombies.speedPerWave", new BridgeEntry(Z_SPEED_PER_WAVE, "double"));
+        m.put("zombies.followRange", new BridgeEntry(Z_FOLLOW_RANGE, "double"));
+        m.put("zombies.followRangePerWave", new BridgeEntry(Z_FOLLOW_PER_WAVE, "double"));
+        m.put("zombies.followRangeCap", new BridgeEntry(Z_FOLLOW_CAP, "double"));
+        m.put("zombies.waveFollowBonus", new BridgeEntry(Z_FOLLOW_WAVE_BONUS, "double"));
+        m.put("zombies.huntWithoutSight", new BridgeEntry(Z_HUNT_WITHOUT_SIGHT, "boolean"));
+        m.put("zombies.maxDamageHearts", new BridgeEntry(Z_MAX_DAMAGE_HEARTS, "double"));
+        m.put("zombies.knockbackResistancePerWave", new BridgeEntry(Z_KBR_PER_WAVE, "double"));
+        m.put("zombies.reinforcementFromWave", new BridgeEntry(Z_REINFORCEMENT_FROM_WAVE, "int"));
+        m.put("zombies.reinforcementPerWave", new BridgeEntry(Z_REINFORCEMENT_PER_WAVE, "double"));
+        m.put("zombies.reinforcementCap", new BridgeEntry(Z_REINFORCEMENT_CAP, "double"));
+        m.put("zombies.hearingRadius", new BridgeEntry(Z_HEARING_RADIUS, "double"));
+        m.put("zombies.hearingPerWave", new BridgeEntry(Z_HEARING_PER_WAVE, "double"));
+        m.put("zombies.hearingCap", new BridgeEntry(Z_HEARING_CAP, "double"));
+        m.put("zombies.noiseCooldownTicks", new BridgeEntry(Z_NOISE_COOLDOWN_TICKS, "int"));
+        m.put("zombies.stripArmor", new BridgeEntry(Z_STRIP_ARMOR, "boolean"));
+        m.put("zombies.allowOnlyBlockItems", new BridgeEntry(Z_BLOCK_ITEMS_ONLY, "boolean"));
+        m.put("zombies.heldBlockChance", new BridgeEntry(Z_HELD_BLOCK_CHANCE, "double"));
+        m.put("zombies.blockBreakFromWave", new BridgeEntry(Z_BLOCK_BREAK_FROM_WAVE, "int"));
+        m.put("zombies.blockBreakChance", new BridgeEntry(Z_BLOCK_BREAK_CHANCE, "double"));
+        m.put("zombies.blockBreakMaxHardness", new BridgeEntry(Z_BLOCK_BREAK_MAX_HARDNESS, "double"));
+        m.put("zombies.blockBreakCooldownTicks", new BridgeEntry(Z_BLOCK_BREAK_COOLDOWN, "int"));
+        m.put("zombies.blockBreakOnlyDuringWaves", new BridgeEntry(Z_BLOCK_BREAK_ONLY_WAVES, "boolean"));
+        m.put("zombies.noBurningDuringWaves", new BridgeEntry(Z_NO_BURN_IN_WAVES, "boolean"));
+        m.put("zombies.babyKeepChance", new BridgeEntry(Z_BABY_KEEP_CHANCE, "double"));
+        m.put("zombies.variantKeepChance", new BridgeEntry(Z_VARIANT_KEEP_CHANCE, "double"));
+        m.put("zombies.nonZombieKeepChance", new BridgeEntry(Z_NON_ZOMBIE_KEEP_CHANCE, "double"));
+        m.put("zombies.convertVariants", new BridgeEntry(Z_CONVERT_VARIANTS, "boolean"));
+        m.put("spawning.enabled", new BridgeEntry(S_ENABLED, "boolean"));
+        m.put("spawning.intervalTicks", new BridgeEntry(S_INTERVAL_TICKS, "int"));
+        m.put("spawning.attemptsPerCycle", new BridgeEntry(S_ATTEMPTS_PER_CYCLE, "int"));
+        m.put("spawning.ringMinDistance", new BridgeEntry(S_RING_MIN, "int"));
+        m.put("spawning.ringMaxDistance", new BridgeEntry(S_RING_MAX, "int"));
+        m.put("spawning.capPerPlayer", new BridgeEntry(S_CAP_PER_PLAYER, "int"));
+        m.put("spawning.capPerPlayerPerWave", new BridgeEntry(S_CAP_PER_WAVE, "double"));
+        m.put("spawning.capMax", new BridgeEntry(S_CAP_MAX, "int"));
+        m.put("spawning.daylightSpawn", new BridgeEntry(S_DAYLIGHT_SPAWN, "boolean"));
+        m.put("spawning.boostNaturalPlacement", new BridgeEntry(S_BOOST_NATURAL_PLACEMENT, "boolean"));
+        m.put("spawning.surfaceChance", new BridgeEntry(S_SURFACE_CHANCE, "double"));
+        m.put("spawning.ignoreDoMobSpawningRule", new BridgeEntry(S_IGNORE_GAMERULE, "boolean"));
+        m.put("effects.procChance", new BridgeEntry(E_PROC_CHANCE, "double"));
+        m.put("effects.onlyDuringWaves", new BridgeEntry(E_ONLY_DURING_WAVES, "boolean"));
+        BRIDGE = Collections.unmodifiableMap(m);
+    }
+
+    /** Human-readable current value for a bridge key. */
+    public static String bridgeGet(String key) {
+        BridgeEntry e = BRIDGE.get(key);
+        return e == null ? null : String.valueOf(e.value().get());
+    }
+
+    /** Sets a bridge key from raw text. @return null on success, otherwise an error message. */
+    @Nullable
+    public static String bridgeSet(String key, String raw) {
+        BridgeEntry e = BRIDGE.get(key);
+        if (e == null) return "unknown_key";
+        try {
+            switch (e.type()) {
+                case "boolean" -> {
+                    if (!raw.equalsIgnoreCase("true") && !raw.equalsIgnoreCase("false")) return "needs true/false";
+                    ((ModConfigSpec.BooleanValue) e.value()).set(Boolean.parseBoolean(raw));
+                }
+                case "int" -> ((ModConfigSpec.ConfigValue<Integer>) cast(e.value())).set(Integer.parseInt(raw));
+                case "double" -> ((ModConfigSpec.ConfigValue<Double>) cast(e.value())).set(Double.parseDouble(raw));
+                case "string" -> ((ModConfigSpec.ConfigValue<String>) cast(e.value())).set(raw);
+                case "enum:AfterLastWave" -> ((ModConfigSpec.ConfigValue<AfterLastWave>) cast(e.value()))
+                        .set(AfterLastWave.valueOf(raw.toUpperCase(java.util.Locale.ROOT)));
+                default -> { return "readonly"; }
+            }
+        } catch (IllegalArgumentException ex) {
+            return "bad_value: " + ex.getMessage();
+        }
+        invalidateCaches();
+        SPEC.save();
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T cast(Object o) { return (T) o; }
+}

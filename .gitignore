@@ -1,0 +1,22 @@
+# Gradle
+.gradle/
+build/
+
+# ModDevGradle / NeoGradle runs
+run/
+runs/
+
+# IDE
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+bin/
+.vscode/
+
+# Datagen cache
+src/generated/resources/.cache/
+
+# OS
+.DS_Store
