@@ -45,7 +45,7 @@
 | **Logo riêng, làm như mod chuyên nghiệp** | Emblem độc quyền 1024² (tay zombie + vòng biohazard), mods.toml đầy đủ | `logo.png` |
 | **Config chỉnh mọi thứ trong game** (ấn Mod → Config) | **91 mục** trong COMMON + CLIENT, mở qua màn hình cấu hình bản địa của NeoForge, có dịch EN/VI | `zombietide-*.toml` |
 | **Lệnh chỉnh mọi thứ + gọi/reset đợt** | `/zombietide` | xem dưới |
-| **Tối ưu CPU/GPU/RAM có hệ thống (v1.3.1)** | Snapshot config + bảng mảng theo-đợt, cache-render HUD/overlay, ring-buffer đếm zombie, debounce ghi đĩa | ⚡ Hiệu năng |
+| **Tối ưu CPU/GPU/RAM có hệ thống (v1.3.1)** | Snapshot config dạng công-thức-đóng O(1) (~0 RAM), cache-render HUD/overlay, ring-buffer đếm zombie, debounce ghi đĩa | ⚡ Hiệu năng |
 
 ---
 
@@ -127,8 +127,9 @@ tụt FPS, RAM không phình**.
 khi gọi 1 lần/giây, nhưng hàng trăm zombie × hàng chục giá trị × 20 tick/giây thì không.
 Snapshot bake *mọi* scalar nóng + **toàn bộ toán tăng trưởng theo đợt** (tốc độ, máu, sát
 thương, tầm phát hiện/nghe, nhịp retarget, trí nhớ, cooldown tiếng động, cổng phá khối,
-trần sinh) vào **mảng phẳng index-theo-đợt** — rebuild duy nhất khi config load/reload/sửa
-lệnh. Đường nóng giờ là: đọc field nguyên thủy hoặc 1 array-index. Không còn lookup trong
+trần sinh) — mọi đường cong theo đợt là **tuyến tính** nên được giữ dạng **công thức đóng O(1)**:
+mỗi lần đọc = vài phép nhân-cộng trên field nguyên thủy, RAM tiêu tốn ≈ 0 byte (không màng
+nào, kể cả maxWaves = 100.000), rebuild duy nhất khi config load/reload/sửa lệnh. Không còn lookup trong
 bất kỳ AI tick / spawn attempt / frame render nào.
 
 **CPU (server):**
@@ -143,7 +144,7 @@ bất kỳ AI tick / spawn attempt / frame render nào.
 - **Overlay máu**: chòm droplet (vị trí, kích thước, sắc độ, độ mờ) được gieo **một lần mỗi cú đánh** theo seed vào mảng int phẳng; mỗi frame chỉ là vài chục `fill` thuần, không RNG, không Gaussian, không cấp phát. Tự rebuild khi đổi độ phân giải hoặc vặn dial.
 - Cả hai layer đều tôn trọng ẩn HUD (F1) và không chạy khi trauma = 0.
 
-**RAM:** bảng theo-đợt mặc định ~6 KB; không còn allocation trong tick/render loop của mod (ngoài vật Minecraft tự sinh); cache phân tích config (khối cầm tay, blacklist, hiệu ứng…) giữ nguyên cơ chế volatile-một-bản.
+**RAM:** snapshot chiếm **≈ 0 byte** (công thức đóng, không mảng theo-đợt); không còn allocation trong tick/render loop của mod; logo mod nén 2.1 MB → 0.47 MB (jar chỉ ~0.7 MB, decode RAM 4 MB → 1 MB); cache phân tích config giữ nguyên cơ chế volatile-một-bản.
 
 **Kết tinh cũ vẫn giữ:** stagger theo chu kỳ, 1 zombie/ngưởi/chu kỳ, trần sống rõ ràng, tai 2.5 Hz + sự kiện rởi rạc, HUD sync đúng 1 packet/giây.
 
@@ -175,6 +176,6 @@ JAR vào release theo tag.
 
 **ZombieTide** turns survival into an escalating siege: 50 waves (first = 8 minutes, each +2 minutes), 5-second air-raid sirene before every assault, zombies that hunt by sound and smell (no line-of-sight needed), siege spawning that works at high noon, sunburn immunity mid-wave, 2-heart damage cap, 2×-player speed ceiling, armorless block-carrying ghouls, block-breaking from wave 20, weighted harmful-effect bites, sparse pixel blood-droplets peppering your screen on every bite, zombies that stalk even creative-mode players, zombie health hard-capped at player + 5 hearts, per-wave-only calm-gap & duration editing in-game (`/zombietide interval|duration`, no global knob), designWave auto-balancing so the LAST wave is always the hardest whatever maxWaves you set, intelligence & frenzy dials, daylight spawning thinned to half of night, and a tiny top-center HUD counting days/hours/minutes/seconds. Everything — 91 config entries with ×100-widened ranges covering every radius, cap, chance, list, per-wave timing, intelligence and frenzy — is tunable live, via `/zombietide config` or the NeoForge config screen.
 
-**Performance (v1.3.1):** the whole engine was rebuilt around a config **snapshot** — every scalar plus every per-wave growth curve (speed, health, damage, reach, retarget cadence, memory, noise cooldowns, breach gates, spawn caps) is baked into flat wave-indexed arrays the moment config loads or changes, so zombie AI ticks, spawn attempts and render frames read plain fields instead of walking NeoForge's config maps. On top of that: the spawn engine scales daylight *attempt counts* instead of dice-rolling work away, counts nearby zombies at most once per cycle via a tiny fixed ring buffer, and probes positions with reusable mutable block-positions; mutations pick the zombie's existing target instead of a nearest-player search; config saving is debounced; the HUD rebuilds its strings at most once per second; and the blood droplet constellation is rolled once per hit into flat int arrays — every frame after that is just a few dozen raw pixel fills. Zero allocations in the mod's own tick/render loops, ~6 KB of per-wave tables, and unchanged gameplay.
+**Performance (v1.3.1):** the whole engine was rebuilt around a config **snapshot** — every scalar plus every per-wave growth curve (speed, health, damage, reach, retarget cadence, memory, noise cooldowns, breach gates, spawn caps) is kept in closed O(1) form — every wave curve is linear, so reads are a multiply-add on plain fields with ~0 bytes of heap, refreshed the moment config loads or changes. On top of that: the spawn engine scales daylight *attempt counts* instead of dice-rolling work away, counts nearby zombies at most once per cycle via a tiny fixed ring buffer, and probes positions with reusable mutable block-positions; mutations pick the zombie's existing target instead of a nearest-player search; config saving is debounced; the HUD rebuilds its strings at most once per second; and the blood droplet constellation is rolled once per hit into flat int arrays — every frame after that is just a few dozen raw pixel fills. Zero allocations in the mod's own tick/render loops, a ~0-byte closed-form snapshot, a logo shrunk from 2.1 MB to 0.47 MB (jar ≈ 0.7 MB), and unchanged gameplay.
 
 <p align="center"><i>“Bạn không trốn được thứ nghe thấy bạn.”</i></p>

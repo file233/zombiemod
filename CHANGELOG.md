@@ -7,8 +7,9 @@
 - **`ZTSnapshot` (mới)** — lớp bake-toàn-bộ-cấu-hình: mọi scalar nóng thành field nguyên
   thủy; toàn bộ toán tăng trưởng theo đợt (tốc độ, máu, sát thương, tầm phát hiện/nghe,
   nhịp retarget, trí nhớ, cooldown tiếng động, gọi-bạn, KBR, trần sinh, cổng phá khối,
-  khoảng-nghỉ/thởi-lượng riêng từng đợt) thành **mảng phẳng index-theo-đợt** (~6 KB ở 50
-  đợt). Refresh đúng 1 lần khi config load/reload/sửa lệnh. Mọi AI tick (10 Hz × hàng trăm
+  khoảng-nghỉ/thởi-lượng riêng từng đợt) giữ dạng **công thức đóng O(1)** — vài phép nhân-
+  cộng, RAM ≈ 0 byte (đã kiểm chứng bit-identical với bảng tra ở mọi maxWaves). Refresh đúng
+  1 lần khi config load/reload/sửa lệnh. Mọi AI tick (10 Hz × hàng trăm
   zombie), spawn attempt, combat/sense/spawn filter giờ đọc field/array — **không còn
   map-lookup của NeoForge config trong đường nóng**.
 - **CPU spawn engine**: hệ số ngày/đêm giờ *co số lần thử sinh* (ban ngày tốn ít CPU hẳn,
@@ -27,7 +28,9 @@
 - **GPU/frame**: HUD chỉ rebuild chuỗi+layout khi nội dung đổi (≤ 1 lần/giây, hoặc ngay khi
   sync/sửa config); overlay máu gieo chòm droplet **1 lần mỗi cú đánh** vào mảng int phẳng —
   mỗi frame chỉ là vài chục `fill` nguyên thủy, không RNG/Gaussian/cấp phát; tôn trọng F1.
-- **RAM**: không còn allocation của mod trong tick/render loop; bảng theo-đợt ~6 KB.
+- **RAM**: snapshot công-thức-đóng ≈ 0 byte heap; không còn allocation của mod trong
+  tick/render loop; **logo nén 2.1 MB → 468 KB** (jar ~0.7 MB).
+- **Sửa**: gán thiếu `unseenMemoryBase` trong ZTSnapshot (lỗi compile báo của ngưởi chơi).
 
 ### Sửa chữa
 

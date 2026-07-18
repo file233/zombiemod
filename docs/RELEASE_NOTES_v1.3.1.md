@@ -11,14 +11,15 @@ không phình**, kể cả ở đợt cuối với cấu hình 100.000 đợt v�
 `dev.file233.zombietide.config.ZTSnapshot` bake, ngay khi config load/reload/sửa bằng lệnh:
 
 - mọi scalar nóng (~60 giá trị) thành **field nguyên thủy**;
-- toàn bộ toán tăng theo đợt thành **mảng phẳng index-theo-đợt**: tốc độ, máu (chưa cap),
-  sát thương (đã cap), tầm phát hiện/nghe (đã nhân hệ số trí tuệ), nhịp retarget, trí nhớ
-  mất dấu, cooldown tiếng động, tỉ lệ gọi bạn, kháng knockback, trần sinh, cổng phá khối,
-  khoảng-nghỉ & thởi-lượng **riêng từng đợt** (gồm cả mọi override).
+- toàn bộ toán tăng theo đợt và giữ **dạng công thức đóng O(1)** thay cho mảng tra: tốc độ, máu (chưa cap), sát
+  thương (đã cap), tầm phát hiện/nghe (đã nhân hệ số trí tuệ), nhịp retarget, trí nhớ mất
+  dấu, cooldown tiếng động, tỉ lệ gọi bạn, kháng knockback, trần sinh, cổng phá khối —
+  kết quả bit-identical với bảng tra ở mọi maxWaves (đã kiểm chứng diff = 0.0), còn
+  khoảng-nghỉ & thởi-lượng **riêng từng đợt** đọc thẳng override-map khi cần.
 
 Hậu quả: AI tick của hàng trăm zombie, mỗi spawn attempt, gate combat/sense/spawn-filter và
 khung hình client giờ chỉ còn **đọc field / 1 array-index** — không còn một map-lookup nào
-của NeoForge config trong đường nóng. Bảng mặc định (50 đợt) nặng ~6 KB.
+của NeoForge config trong đường nóng. Snapshot tiêu tốn **≈ 0 byte heap** dù maxWaves = 100.000.
 
 ## 🖥 CPU (server)
 
@@ -57,7 +58,9 @@ của NeoForge config trong đường nóng. Bảng mặc định (50 đợt) n�
 - Không còn allocation nào do mod tự tạo trong tick loop / render loop (ngoài vật liệu
   Minecraft tự sinh: attribute map, navigation…).
 - Ring-buffer spawn-cycle 32 slot × mấy long — cố định, không WeakHashMap.
-- Bảng theo-đợt: ~6 KB ở mặc định 50 đợt.
+- Snapshot công-thức-đóng: ≈ 0 byte (không mảng theo-đợt nào cả).
+- **logo.png nén 1024²/2.1 MB → 512²/468 KB** — jar từ ~2.3 MB còn **~0.7 MB**, RAM decode ở
+  danh sách mod 4 MB → 1 MB.
 
 ## 🔧 Khác
 
