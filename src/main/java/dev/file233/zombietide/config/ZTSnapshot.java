@@ -110,6 +110,7 @@ public final class ZTSnapshot {
         double iPerWave = ZTConfig.I_PER_WAVE.get();
         int unseenBase = ZTConfig.I_UNSEEN_MEMORY.get();
         int unseenPerWave = ZTConfig.I_UNSEEN_PER_WAVE.get();
+        this.unseenMemoryBase = unseenBase;
 
         this.frenzyIntensity = ZTConfig.F_INTENSITY.get();
         this.frenzySpeedBoost = ZTConfig.F_SPEED_BOOST.get();
