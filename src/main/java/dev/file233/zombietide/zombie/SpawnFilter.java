@@ -7,7 +7,6 @@ import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.level.ServerLevelAccessor;
-import net.neoforged.bus.api.Event;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.neoforged.neoforge.event.entity.living.MobSpawnEvent;
@@ -97,7 +96,7 @@ public final class SpawnFilter {
         if (!ZTConfig.dimensionAllowed(event.getLevel().getLevel().dimension())) return;
         if (!WaveManager.isWaveActive()) return;
         // ignores light & monster rules: the tide spawns under the noon sun
-        event.setResult(Event.Result.ALLOW);
+        event.setResult(MobSpawnEvent.SpawnPlacementCheck.Result.SUCCEED);
     }
 
     public static void onPositionCheck(MobSpawnEvent.PositionCheck event) {

@@ -10,7 +10,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
-import net.minecraft.world.entity.SpawnPlacements;
+import net.minecraft.world.entity.SpawnPlacementType;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.NaturalSpawner;
@@ -117,7 +117,7 @@ public final class WaveSpawner {
         if (!floor.isFaceSturdy(level, below, Direction.UP)) return false;
 
         // the genuine vanilla placement predicate (collision, space, fluids…)
-        if (!NaturalSpawner.isSpawnPositionOk(SpawnPlacements.Type.ON_GROUND, level, pos, EntityType.ZOMBIE)) return false;
+        if (!NaturalSpawner.isSpawnPositionOk(SpawnPlacementType.ON_GROUND, level, pos, EntityType.ZOMBIE)) return false;
 
         // mid-wave the sun is no longer a shield: daylight spawns are allowed by design
         if (!ZTConfig.S_DAYLIGHT_SPAWN.get() && level.getMaxLocalRawBrightness(pos) > 0) return false;

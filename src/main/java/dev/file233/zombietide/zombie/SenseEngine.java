@@ -118,7 +118,7 @@ public final class SenseEngine {
     public static void onExplosionDetonate(ExplosionEvent.Detonate event) {
         if (!ZTConfig.enabled()) return;
         if (event.getLevel() instanceof ServerLevel level) {
-            alert(level, event.getExplosion().center(), LOUD_EXPLOSION, null);
+            alert(level, event.getExplosion().getPosition(), LOUD_EXPLOSION, null);
         }
     }
 

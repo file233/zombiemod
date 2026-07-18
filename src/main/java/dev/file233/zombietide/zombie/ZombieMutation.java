@@ -134,7 +134,7 @@ public final class ZombieMutation {
     }
 
     private static void ensureHuntGoal(Zombie zombie) {
-        for (WrappedGoal wrapped : zombie.targetSelector.getGoals()) {
+        for (WrappedGoal wrapped : zombie.targetSelector.getAvailableGoals()) {
             if (wrapped.getGoal() instanceof ZTHuntPlayerGoal) return;
         }
         // priority just below vanilla player targeting (2), re-evaluated briskly
@@ -142,7 +142,7 @@ public final class ZombieMutation {
     }
 
     private static void ensureBlockBreakGoal(Zombie zombie) {
-        for (WrappedGoal wrapped : zombie.goalSelector.getGoals()) {
+        for (WrappedGoal wrapped : zombie.goalSelector.getAvailableGoals()) {
             if (wrapped.getGoal() instanceof BlockBreakGoal) return;
         }
         zombie.goalSelector.addGoal(4, new BlockBreakGoal(zombie));
@@ -150,7 +150,7 @@ public final class ZombieMutation {
 
     private static void removeSunGoals(Zombie zombie) {
         List<Goal> doomed = new ArrayList<>();
-        for (WrappedGoal wrapped : zombie.goalSelector.getGoals()) {
+        for (WrappedGoal wrapped : zombie.goalSelector.getAvailableGoals()) {
             Goal goal = wrapped.getGoal();
             if (goal instanceof FleeSunGoal || goal instanceof RestrictSunGoal) doomed.add(goal);
         }
@@ -162,7 +162,7 @@ public final class ZombieMutation {
         EntityType<?> type = zombie.getType();
         if (type != EntityType.ZOMBIE && type != EntityType.DROWNED) return;
         boolean hasRestrict = false, hasFlee = false;
-        for (WrappedGoal wrapped : zombie.goalSelector.getGoals()) {
+        for (WrappedGoal wrapped : zombie.goalSelector.getAvailableGoals()) {
             if (wrapped.getGoal() instanceof RestrictSunGoal) hasRestrict = true;
             if (wrapped.getGoal() instanceof FleeSunGoal) hasFlee = true;
         }
