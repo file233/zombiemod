@@ -116,14 +116,15 @@ public final class ZombieMutation {
             }
         }
 
+        double designWave = ZTConfig.designWave(wave);
         int fromWave = ZTConfig.Z_REINFORCEMENT_FROM_WAVE.get();
-        double reinforcements = wave >= fromWave
+        double reinforcements = designWave >= fromWave
                 ? Math.min(ZTConfig.Z_REINFORCEMENT_CAP.get(),
-                        (0.1D + wave * ZTConfig.Z_REINFORCEMENT_PER_WAVE.get()) * (waveActive ? 1.0D + 0.5D * ZTConfig.frenzy() : 1.0D))
+                        (0.1D + designWave * ZTConfig.Z_REINFORCEMENT_PER_WAVE.get()) * (waveActive ? 1.0D + 0.5D * ZTConfig.frenzy() : 1.0D))
                 : 0.1D; // vanilla default
         setBase(zombie, Attributes.SPAWN_REINFORCEMENTS_CHANCE, reinforcements);
 
-        double kbr = waveActive ? Math.min(0.4D, wave * ZTConfig.Z_KBR_PER_WAVE.get() * ZTConfig.frenzy()) : 0.0D;
+        double kbr = waveActive ? Math.min(0.4D, designWave * ZTConfig.Z_KBR_PER_WAVE.get() * ZTConfig.frenzy()) : 0.0D;
         setBase(zombie, Attributes.KNOCKBACK_RESISTANCE, kbr);
     }
 
@@ -142,7 +143,7 @@ public final class ZombieMutation {
         if (firstTouch) {
             zombie.setData(ZTAttachments.WAVE_TAGGED, true);
             // one lifetime roll per zombie: is it one of the wall-chewers?
-            if (wave >= ZTConfig.Z_BLOCK_BREAK_FROM_WAVE.get()
+            if (ZTConfig.designWave(wave) >= ZTConfig.Z_BLOCK_BREAK_FROM_WAVE.get()
                     && zombie.getRandom().nextFloat() < ZTConfig.Z_BLOCK_BREAK_CHANCE.get()) {
                 ensureBlockBreakGoal(zombie);
             }

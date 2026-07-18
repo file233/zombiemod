@@ -42,11 +42,11 @@ public final class CombatRules {
         var rand = player.getRandom();
         if (rand.nextFloat() >= ZTConfig.E_PROC_CHANCE.get()) return;
 
-        int wave = WaveManager.currentWave();
+        double designWave = ZTConfig.designWave(WaveManager.currentWave());
         List<ZTConfig.EffectRoll> pool = new ArrayList<>();
         int totalWeight = 0;
         for (ZTConfig.EffectRoll roll : ZTConfig.effectRolls()) {
-            if (wave >= roll.minWave()) {
+            if (designWave >= roll.minWave()) {
                 pool.add(roll);
                 totalWeight += roll.weight();
             }

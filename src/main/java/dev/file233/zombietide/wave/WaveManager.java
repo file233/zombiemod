@@ -39,7 +39,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  *
  * <p>Timeline per cycle (all values configurable):
  * <pre>
- *  calm before wave N (formula or per-wave override)  ──[alarmSeconds of sirene]──▶  wave #N  ──▶  calm …
+ *  calm before wave N (600s default, overridable per wave)  ──[alarmSeconds of sirene]──▶  wave #N  ──▶  …
  * </pre>
  * Default: 50 waves; behaviour after wave 50 is governed by {@code waves.afterLastWave}.
  */

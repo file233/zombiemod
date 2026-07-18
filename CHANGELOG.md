@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.0 — "Sparse Blood, Twin Pace, Every Wave Its Own Clock" (2026-07-19)
+
+### Thay đổi theo yêu cầu mới
+- **Màn hình máu = hạt pixel thưa**: bỏ hẳn texture mờ; mỗi cú đánh vắt ra một chòm **vài chục hạt máu pixel hình vuông** (2–4 điểm va chạm, kích thước/màu/độ đục ngẫu nhiên theo seed ổn định — không flicker), rơi rụng dần khi trauma hạ. Mới: `dropletCount=22`, `dropletSize=3`, `dropletSpread=70`. (Gỡ `blurPasses`, `splatterVariants`.)
+- **Trần tốc độ zombie = 2× ngưởi chơi**: `zombies.maxSpeed` mặc định **0.20** (từ 0.12).
+- **Khoảng-đợt chỉ còn chỉnh TỪNG ĐỢT**: **gỡ** `waves.calmMinutes` + `calmMinutesPerWave` (knob áp-dụng-cho-tất-cả). Mọi đợt mặc định 600s, chỉnh riêng qua `waves.intervalOverrides` hoặc `/zombietide interval <đợt> [giây|clear]` — trực tiếp trong game.
+- **Tự cân bằng theo maxWaves**: mọi công thức tăng trưởng chạy trên **designWave** = wave × (50/maxWaves) — dù chỉnh 10 hay 500 đợt, **đợt cuối luôn khó đúng chuẩn wave-50 thiết kế** (intelligence, máu, sát thương, tốc độ, tầm phát hiện, reinforcements, KBR, minWave hiệu ứng, ngưỡng phá khối đều chuẩn hóa).
+- **Range config ×100**: toàn bộ 60 `defineInRange` (COMMON+CLIENT) — trần trên nhân 100, sàn dưới (float) chia 100; min int giữ nguyên để không vỡ game (vd maxWaves ≥ 1). Bounds lệnh interval/duration ×100 (tới ~3.8 năm).
+
+### Kỹ thuật
+- `ZTConfig.designWave(int)` — trung tâm chuẩn hóa; `DEFAULT_CALM_SECONDS=600`; `calmSource()` → override/default.
+- ZTTraumaOverlayLayer: renderer giọt-pixel deterministic (`GuiGraphics#fill`), không còn texture (giảm ~360KB resources).
+- `/zombietide interval` header giờ hiển thị mặc định 600s/đợt.
+
 ## 1.2.0 — "Smarter, Madder, Day-Shy" (2026-07-19)
 
 ### Thêm mới
