@@ -616,9 +616,17 @@ public final class ZTConfig {
     private static volatile Map<Integer, Integer> intervalOverrideCache = null;
     private static volatile Map<Integer, Integer> durationOverrideCache = null;
 
-    public static void onConfigLoaded(ModConfigEvent.Loading e) { invalidateCaches(); }
+    public static void onConfigLoaded(ModConfigEvent.Loading e) {
+        // NeoForge fires this once per OWNED file — our CLIENT toml arrives first and
+        // must NOT rebuild the COMMON-feeding snapshot (its values are not loaded yet).
+        if (e.getConfig().getSpec() != SPEC) return;
+        invalidateCaches();
+    }
 
-    public static void onConfigReloaded(ModConfigEvent.Reloading e) { invalidateCaches(); }
+    public static void onConfigReloaded(ModConfigEvent.Reloading e) {
+        if (e.getConfig().getSpec() != SPEC) return;
+        invalidateCaches();
+    }
 
     public static void invalidateCaches() {
         heldBlocksCache = null;
