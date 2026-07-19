@@ -1,56 +1,5 @@
 # Changelog
 
-## 1.3.1 — "The Tuning Forge" (2026-07-19)
-
-### Tối ưu hóa (giữ nguyên 100% lối chơi & 91 mục config)
-
-- **`ZTSnapshot` (mới)** — lớp bake-toàn-bộ-cấu-hình: mọi scalar nóng thành field nguyên
-  thủy; toàn bộ toán tăng trưởng theo đợt (tốc độ, máu, sát thương, tầm phát hiện/nghe,
-  nhịp retarget, trí nhớ, cooldown tiếng động, gọi-bạn, KBR, trần sinh, cổng phá khối,
-  khoảng-nghỉ/thởi-lượng riêng từng đợt) giữ dạng **công thức đóng O(1)** — vài phép nhân-
-  cộng, RAM ≈ 0 byte (đã kiểm chứng bit-identical với bảng tra ở mọi maxWaves). Refresh đúng
-  1 lần khi config load/reload/sửa lệnh. Mọi AI tick (10 Hz × hàng trăm
-  zombie), spawn attempt, combat/sense/spawn filter giờ đọc field/array — **không còn
-  map-lookup của NeoForge config trong đường nóng**.
-- **CPU spawn engine**: hệ số ngày/đêm giờ *co số lần thử sinh* (ban ngày tốn ít CPU hẳn,
-  không còn gieo xúc xắc vứt công quét); đếm zombie-quanh-ngưởi tối đa 1 lần/chu kỳ qua
-  **ring-buffer 32 slot** thay UUID-map (không GC, tự dọn ngưởi thoát); probe vị trí bằng
-  `MutableBlockPos` tái sử dụng; bubble-no-spawn tính thuần tọa độ.
-- **CPU zombie mutation**: gate rẻ-trước; yardstick máu lấy target sẵn có thay cho
-  `getNearestPlayer`; sweep/đếm fast-path khi chỉ chơi overworld.
-- **CPU combat/sense/blockbreak**: pool hiệu ứng cắn cache theo (epoch × wave); gate đốt-
-  nắng (mọi entity, mọi tick) đọc đúng 2 primitive; BlockBreakGoal bỏ cấp phát
-  `BlockPos[]`/`Vec3` mỗi lần quét 2 Hz.
-- **CPU wave conductor**: còi + holder âm thanh cache theo chu kỳ; lọc dimension bị bỏ qua
-  ở cấu hình mặc định; mọi đọc config per-tick bị loại bỏ.
-- **Đĩa**: ghi file config qua lệnh có **debounce 300 ms** (spam `/zombietide interval`
-  không còn IO-spam).
-- **GPU/frame**: HUD chỉ rebuild chuỗi+layout khi nội dung đổi (≤ 1 lần/giây, hoặc ngay khi
-  sync/sửa config); overlay máu gieo chòm droplet **1 lần mỗi cú đánh** vào mảng int phẳng —
-  mỗi frame chỉ là vài chục `fill` nguyên thủy, không RNG/Gaussian/cấp phát; tôn trọng F1.
-- **RAM**: snapshot công-thức-đóng ≈ 0 byte heap; không còn allocation của mod trong
-  tick/render loop; **logo nén 2.1 MB → 468 KB** (jar ~0.7 MB).
-- **Sửa**: gán thiếu `unseenMemoryBase` trong ZTSnapshot (lỗi compile báo của ngưởi chơi).
-
-### Sửa chữa
-
-- Biên số `wave` ở lệnh `wave|interval|duration` nới 1000 → 100000 (khớp range ×100).
-- README: bỏ tham chiếu còn sót tới `calmMinutes` (đã xóa từ 1.3.0), chuẩn hóa số mục config.
-
-## 1.3.0 — "Sparse Blood, Twin Pace, Every Wave Its Own Clock" (2026-07-19)
-
-### Thay đổi theo yêu cầu mới
-- **Màn hình máu = hạt pixel thưa**: bỏ hẳn texture mờ; mỗi cú đánh vắt ra một chòm **vài chục hạt máu pixel hình vuông** (2–4 điểm va chạm, kích thước/màu/độ đục ngẫu nhiên theo seed ổn định — không flicker), rơi rụng dần khi trauma hạ. Mới: `dropletCount=22`, `dropletSize=3`, `dropletSpread=70`. (Gỡ `blurPasses`, `splatterVariants`.)
-- **Trần tốc độ zombie = 2× ngưởi chơi**: `zombies.maxSpeed` mặc định **0.20** (từ 0.12).
-- **Khoảng-đợt chỉ còn chỉnh TỪNG ĐỢT**: **gỡ** `waves.calmMinutes` + `calmMinutesPerWave` (knob áp-dụng-cho-tất-cả). Mọi đợt mặc định 600s, chỉnh riêng qua `waves.intervalOverrides` hoặc `/zombietide interval <đợt> [giây|clear]` — trực tiếp trong game.
-- **Tự cân bằng theo maxWaves**: mọi công thức tăng trưởng chạy trên **designWave** = wave × (50/maxWaves) — dù chỉnh 10 hay 500 đợt, **đợt cuối luôn khó đúng chuẩn wave-50 thiết kế** (intelligence, máu, sát thương, tốc độ, tầm phát hiện, reinforcements, KBR, minWave hiệu ứng, ngưỡng phá khối đều chuẩn hóa).
-- **Range config ×100**: toàn bộ 60 `defineInRange` (COMMON+CLIENT) — trần trên nhân 100, sàn dưới (float) chia 100; min int giữ nguyên để không vỡ game (vd maxWaves ≥ 1). Bounds lệnh interval/duration ×100 (tới ~3.8 năm).
-
-### Kỹ thuật
-- `ZTConfig.designWave(int)` — trung tâm chuẩn hóa; `DEFAULT_CALM_SECONDS=600`; `calmSource()` → override/default.
-- ZTTraumaOverlayLayer: renderer giọt-pixel deterministic (`GuiGraphics#fill`), không còn texture (giảm ~360KB resources).
-- `/zombietide interval` header giờ hiển thị mặc định 600s/đợt.
-
 ## 1.2.0 — "Smarter, Madder, Day-Shy" (2026-07-19)
 
 ### Thêm mới

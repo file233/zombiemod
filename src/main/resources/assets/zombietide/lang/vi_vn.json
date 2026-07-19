@@ -44,6 +44,7 @@
   "zombietide.configuration.maxWaves": "Tổng số đợt",
   "zombietide.configuration.firstWaveMinutes": "Phút của đợt đầu",
   "zombietide.configuration.waveIncrementMinutes": "+Phút mỗi đợt",
+  "zombietide.configuration.calmMinutes": "Phút bình yên giữa hai đợt",
   "zombietide.configuration.alarmSeconds": "Giây báo động",
   "zombietide.configuration.alarmSound": "ID âm thanh báo động",
   "zombietide.configuration.alarmVolume": "Âm lượng báo động",
@@ -117,7 +118,7 @@
   "zombietide.configuration.client.damageOverlay": "Màn hình đỏ khi trúng đòn",
   "zombietide.configuration.client.intensity": "Độ mạnh màn đỏ",
   "zombietide.configuration.client.maxAlpha": "Độ đục tối đa",
-  "command.zombietide.interval.header": "Khoảng nghỉ: mặc định %ss cho mỗi đợt (chỉnh riêng bên dưới):",
+  "command.zombietide.interval.header": "Khoảng nghỉ = %s phút (+%s phút mỗi đợt); chỉnh riêng từng đợt:",
   "command.zombietide.interval.none": " (chưa có - mọi đợt đều theo công thức)",
   "command.zombietide.interval.override_line": " - đợt %s -> %s",
   "command.zombietide.interval.hint": "Dùng /zombietide interval <đợt> [giây|clear]",
@@ -134,6 +135,7 @@
   "zombietide.configuration.targeting": "Truy đuổi mục tiêu",
   "zombietide.configuration.targetCreativePlayers": "Bám theo ngưởi chơi sáng tạo",
   "zombietide.configuration.targetSpectators": "Bám theo ngưởi theo dõi (spectator)",
+  "zombietide.configuration.calmMinutesPerWave": "+Phút bình yên mỗi đợt",
   "zombietide.configuration.intervalOverrides": "Khoảng nghỉ riêng từng đợt",
   "zombietide.configuration.durationOverrides": "Độ dài riêng từng đợt",
   "zombietide.configuration.alarmPitch": "Cao độ còi báo",
@@ -144,6 +146,8 @@
   "zombietide.configuration.pressureCreativePlayers": "Vây quanh ngưởi chơi sáng tạo",
   "zombietide.configuration.amplifier": "Cấp hiệu ứng (I+)",
   "zombietide.configuration.client.fadePerTick": "Máu nhạt dần mỗi tick",
+  "zombietide.configuration.client.blurPasses": "Số lớp mờ của máu",
+  "zombietide.configuration.client.splatterVariants": "Họa tiết máu ngẫu nhiên",
   "command.zombietide.status.mind_active": "Bộ não: thông minh x%s | điên cuồng x%s (ĐANG CUỒNG LOẠN)",
   "command.zombietide.status.mind_calm": "Bộ não: thông minh x%s | điên cuồng x%s (ngủ đông giữa đợt)",
   "zombietide.configuration.intelligence": "Độ thông minh zombie",
@@ -157,8 +161,5 @@
   "zombietide.configuration.frenzySpeedBoost": "Tốc độ cộng thêm trong đợt",
   "zombietide.configuration.frenzyHearingBonus": "Bán kính nghe thêm trong đợt",
   "zombietide.configuration.frenzyNoiseFactor": "Hệ số phản ứng trong đợt",
-  "zombietide.configuration.daySpawnFactor": "Tỉ lệ sinh ban ngày (so với đêm)",
-  "zombietide.configuration.client.dropletCount": "Số hạt máu (cú đánh mạnh)",
-  "zombietide.configuration.client.dropletSize": "Kích thước hạt máu (px)",
-  "zombietide.configuration.client.dropletSpread": "Độ tản hạt máu (px)"
+  "zombietide.configuration.daySpawnFactor": "Tỉ lệ sinh ban ngày (so với đêm)"
 }

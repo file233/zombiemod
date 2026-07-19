@@ -1,7 +1,6 @@
 package dev.file233.zombietide.wave;
 
 import dev.file233.zombietide.config.ZTConfig;
-import dev.file233.zombietide.config.ZTSnapshot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
@@ -16,6 +15,7 @@ import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Wave spawn engine. While a wave runs it keeps horde pressure on every player using
@@ -26,70 +26,44 @@ import net.minecraft.world.level.levelgen.Heightmap;
  * <p>Per player and cycle it picks a few candidate positions on a ring (24–48 blocks by
  * default, vanilla's natural spawn band), checks them like NaturalSpawner would, and
  * materializes one plain zombie. All numbers are config-driven for performance tuning.
- *
- * <p><b>Performance doctrine:</b>
- * <ul>
- *   <li>every value comes from the {@link ZTSnapshot} — zero config-map walks per attempt;</li>
- *   <li>each player owns a tiny reusable 3-long cycle record (ring buffer, no map lookups,
- *       no per-cycle allocations, automatic eviction of departed players);</li>
- *   <li>position probing reuses one mutable {@link BlockPos};</li>
- *   <li>the day-time factor scales the <i>attempt count</i>, so daylight costs less CPU
- *       instead of rolling dice that throw work away.</li>
- * </ul>
  */
 public final class WaveSpawner {
     private WaveSpawner() {}
 
-    /**
-     * Per-player spawn-cycle state: [nextCycleTick, aliveAtCycleStart, referenceEpoch].
-     * Packed in parallel arrays indexed by a power-of-two ring over the player's hash —
-     * constant memory, zero GC pressure, no WeakHashMap.
-     */
-    private static final int CYCLE_SLOTS = 32; // plenty: online players rarely exceed this
-    private static final ServerPlayer[] CYCLE_OWNER = new ServerPlayer[CYCLE_SLOTS];
-    private static final long[] CYCLE_STATE = new long[CYCLE_SLOTS * 3];
-
-    // two mutable block-positions reused for every probe (server main thread only);
-    // FLOOR stays separate so checking the block below never corrupts the candidate pos
-    private static final BlockPos.MutableBlockPos POS = new BlockPos.MutableBlockPos();
-    private static final BlockPos.MutableBlockPos FLOOR = new BlockPos.MutableBlockPos();
-
     public static void tick(MinecraftServer server, int wave) {
-        ZTSnapshot s = ZTSnapshot.get();
-        if (!s.spawnerEnabled || s.spawnAttempts <= 0) return;
+        if (!ZTConfig.S_ENABLED.get()) return;
         for (var dimKey : ZTConfig.dimensions()) {
             ServerLevel level = server.getLevel(dimKey);
             if (level == null) continue;
             if (level.getDifficulty() == Difficulty.PEACEFUL) continue;
-            if (!s.ignoreGamerule && !level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)) continue;
-            int interval = Math.max(5, s.spawnIntervalTicks);
-            long gameTime = level.getGameTime();
+            if (!ZTConfig.S_IGNORE_GAMERULE.get() && !level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)) continue;
+            int interval = Math.max(5, ZTConfig.S_INTERVAL_TICKS.get());
             for (ServerPlayer player : level.players()) {
                 // spectators never attract the tide; creative players do when configured to
                 if (player.isSpectator() || !player.isAlive()) continue;
-                if (player.isCreative() && !s.pressureCreative) continue;
+                if (player.isCreative() && !ZTConfig.S_PRESSURE_CREATIVE.get()) continue;
                 // stagger players across ticks so we never scan everyone at once
-                int salt = (player.hashCode() & 0x7FFFFFFF) % interval;
-                if (((gameTime + salt) % interval) != 0L) continue;
-                spawnCycleFor(level, player, wave, s, gameTime);
+                int salt = (player.getUUID().hashCode() & 0x7FFFFFFF) % interval;
+                if (((level.getGameTime() + salt) % interval) != 0L) continue;
+                spawnCycleFor(level, player, wave);
             }
         }
     }
 
-    private static void spawnCycleFor(ServerLevel level, ServerPlayer player, int wave, ZTSnapshot s, long gameTime) {
-        // daylight thins the ranks — by scaling the work, not by rolling dice that waste it
-        double dayFactor = level.isDay() ? s.daySpawnFactor : 1.0D;
+    private static void spawnCycleFor(ServerLevel level, ServerPlayer player, int wave) {
+        // daylight thins the ranks: by default only half as many spawns while the sun is up
+        double dayFactor = level.isDay() ? ZTConfig.S_DAY_SPAWN_FACTOR.get() : 1.0D;
         if (dayFactor <= 0.0D) return;
-        int attempts = (int) Math.round(s.spawnAttempts * Math.min(1.0D, dayFactor));
-        if (attempts <= 0) attempts = 1; // noon still delivers the occasional shambler
+        if (dayFactor < 1.0D && level.getRandom().nextDouble() > dayFactor) return;
 
-        double cap = s.spawnCapFor(wave);
+        int cap = ZTConfig.zombieCap(wave);
+        int nearby = level.getEntitiesOfClass(Zombie.class, player.getBoundingBox().inflate(96.0D, 32.0D, 96.0D)).size();
+        if (nearby >= cap) return;
+
         var random = level.getRandom();
-        int ringSlot = (player.hashCode() & 0x7FFFFFFF) & (CYCLE_SLOTS - 1);
-        int base = ringSlot * 3;
-
-        double minD = s.ringMin;
-        double maxD = s.ringMax;
+        int attempts = ZTConfig.S_ATTEMPTS_PER_CYCLE.get();
+        double minD = ZTConfig.S_RING_MIN.get();
+        double maxD = Math.max(minD + 4.0D, ZTConfig.S_RING_MAX.get());
 
         for (int i = 0; i < attempts; i++) {
             double angle = random.nextDouble() * (Math.PI * 2.0D);
@@ -97,14 +71,11 @@ public final class WaveSpawner {
             int x = Mth.floor(player.getX() + Math.cos(angle) * dist);
             int z = Mth.floor(player.getZ() + Math.sin(angle) * dist);
 
-            BlockPos pos = random.nextDouble() < s.surfaceChance
+            BlockPos pos = random.nextDouble() < ZTConfig.S_SURFACE_CHANCE.get()
                     ? surfacePos(level, player, x, z)
                     : cavePos(level, player, x, z, random);
             if (pos == null) continue;
             if (!canSpawnAt(level, pos, minD)) continue;
-
-            // the no-spawn bubble test uses the per-player alive count refreshed per cycle
-            if (aliveFor(level, player, ringSlot, base, gameTime) >= cap) return;
 
             Zombie zombie = EntityType.ZOMBIE.create(level);
             if (zombie == null) continue;
@@ -112,25 +83,8 @@ public final class WaveSpawner {
             // Triggers ZombieMutation via NeoForge's FinalizeSpawnEvent, then joins the world.
             zombie.finalizeSpawn(level, level.getCurrentDifficultyAt(pos), MobSpawnType.NATURAL, null);
             level.addFreshEntity(zombie);
-            CYCLE_STATE[base + 1] += 1; // the fresh shambler counts immediately toward the cap
             return; // one reinforcement per player per cycle keeps the pacing eerie, not chaotic
         }
-        // note: CYCLE_STATE[base+1] is refreshed lazily inside aliveFor() each cycle
-    }
-
-    /**
-     * Alive-zombie count around a player, recomputed at most once per spawn cycle and
-     * adjusted in between by the engine's own successful spawns. The expensive
-     * {@code getEntitiesOfClass} box query therefore runs once per cycle, never per attempt.
-     */
-    private static long aliveFor(ServerLevel level, ServerPlayer player, int ringSlot, int base, long gameTime) {
-        if (CYCLE_OWNER[ringSlot] != player || CYCLE_STATE[base] != gameTime) {
-            CYCLE_OWNER[ringSlot] = player;
-            CYCLE_STATE[base] = gameTime;
-            CYCLE_STATE[base + 1] = level.getEntitiesOfClass(Zombie.class,
-                    player.getBoundingBox().inflate(96.0D, 32.0D, 96.0D)).size();
-        }
-        return CYCLE_STATE[base + 1];
     }
 
     private static BlockPos surfacePos(ServerLevel level, ServerPlayer player, int x, int z) {
@@ -138,23 +92,19 @@ public final class WaveSpawner {
         if (y <= level.getMinBuildHeight()) return null;
         // Don't rain zombies onto players deep underground — they'd never meet.
         if (Math.abs(y - player.getBlockY()) > 32) return null;
-        POS.set(x, y, z);
-        return POS;
+        return new BlockPos(x, y, z);
     }
 
     private static BlockPos cavePos(ServerLevel level, ServerPlayer player, int x, int z, net.minecraft.util.RandomSource random) {
         int baseY = Mth.clamp(player.getBlockY() + random.nextInt(7) - 3, level.getMinBuildHeight() + 2, level.getMaxBuildHeight() - 2);
         for (int dy = 0; dy < 8; dy++) {
-            POS.set(x, baseY - dy, z);
-            BlockState floor = level.getBlockState(POS);
+            BlockPos ground = new BlockPos(x, baseY - dy, z);
+            BlockPos feet = ground.above();
+            BlockState floor = level.getBlockState(ground);
             if (floor.isAir() || floor.liquid()) continue;
-            if (!floor.isFaceSturdy(level, POS, Direction.UP)) continue;
-            POS.move(Direction.UP);
-            if (!level.getBlockState(POS).isAir()) { POS.move(Direction.DOWN); continue; }
-            POS.move(Direction.UP);
-            if (!level.getBlockState(POS).isAir()) { POS.move(Direction.DOWN, 2); continue; }
-            POS.move(Direction.DOWN); // feet level
-            return POS;
+            if (!floor.isFaceSturdy(level, ground, Direction.UP)) continue;
+            if (!level.getBlockState(feet).isAir() || !level.getBlockState(feet.above()).isAir()) continue;
+            return feet;
         }
         return null;
     }
@@ -163,23 +113,21 @@ public final class WaveSpawner {
     private static boolean canSpawnAt(ServerLevel level, BlockPos pos, double minDistance) {
         if (!level.getWorldBorder().isWithinBounds(pos)) return false;
 
-        // the vanilla 24-block no-spawn bubble around EVERY player (cheap virtual distance)
-        double px = pos.getX() + 0.5D, py = pos.getY() + 0.5D, pz = pos.getZ() + 0.5D;
-        double minSq = minDistance * minDistance;
+        // the vanilla 24-block no-spawn bubble around EVERY player
+        Vec3 center = pos.getCenter();
         for (ServerPlayer other : level.players()) {
-            double dx = other.getX() - px, dy = other.getY() - py, dz = other.getZ() - pz;
-            if (dx * dx + dy * dy + dz * dz < minSq) return false;
+            if (other.distanceToSqr(center) < minDistance * minDistance) return false;
         }
 
-        FLOOR.set(pos.getX(), pos.getY() - 1, pos.getZ());
-        BlockState floor = level.getBlockState(FLOOR);
-        if (!floor.isFaceSturdy(level, FLOOR, Direction.UP)) return false;
+        BlockPos below = pos.below();
+        BlockState floor = level.getBlockState(below);
+        if (!floor.isFaceSturdy(level, below, Direction.UP)) return false;
 
         // the genuine vanilla placement predicate (collision, space, fluids…)
         if (!SpawnPlacementTypes.ON_GROUND.isSpawnPositionOk(level, pos, EntityType.ZOMBIE)) return false;
 
         // mid-wave the sun is no longer a shield: daylight spawns are allowed by design
-        if (!ZTSnapshot.get().daylightSpawn && level.getMaxLocalRawBrightness(pos) > 0) return false;
+        if (!ZTConfig.S_DAYLIGHT_SPAWN.get() && level.getMaxLocalRawBrightness(pos) > 0) return false;
 
         return true;
     }

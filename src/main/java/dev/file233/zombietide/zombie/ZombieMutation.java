@@ -6,7 +6,6 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import dev.file233.zombietide.config.ZTConfig;
-import dev.file233.zombietide.config.ZTSnapshot;
 import dev.file233.zombietide.registry.ZTAttachments;
 import dev.file233.zombietide.wave.WaveManager;
 import net.minecraft.server.MinecraftServer;
@@ -44,19 +43,17 @@ public final class ZombieMutation {
 
     public static void apply(Zombie zombie, boolean loadedFromDisk) {
         if (zombie.level().isClientSide()) return;
-        ZTSnapshot snap = ZTSnapshot.get();
-        if (!snap.enabled) return;
         int wave = WaveManager.currentWave();
         boolean active = WaveManager.isWaveActive();
 
-        applyGearRules(zombie, snap);
-        applyAttributes(zombie, wave, active, snap);
-        applyBrain(zombie, wave, active, snap);
+        applyGearRules(zombie);
+        applyAttributes(zombie, wave, active);
+        applyBrain(zombie, wave, active);
     }
 
     // ------------------------------------------------------------------ gear
-    private static void applyGearRules(Zombie zombie, ZTSnapshot snap) {
-        if (snap.stripArmor) {
+    private static void applyGearRules(Zombie zombie) {
+        if (ZTConfig.Z_STRIP_ARMOR.get()) {
             for (EquipmentSlot slot : EquipmentSlot.values()) {
                 if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR && !zombie.getItemBySlot(slot).isEmpty()) {
                     zombie.setItemSlot(slot, ItemStack.EMPTY);
@@ -64,21 +61,18 @@ public final class ZombieMutation {
                 }
             }
         }
-        if (snap.blockItemsOnly) {
+        if (ZTConfig.Z_BLOCK_ITEMS_ONLY.get()) {
             // strip any non-block weapon/tool that rollout or a dungeon granted
-            ItemStack main = zombie.getMainHandItem();
-            ItemStack off = zombie.getOffhandItem(); // fetched once: each call rebuilds a view otherwise
-            if (!main.isEmpty() && !(main.getItem() instanceof BlockItem)) {
+            if (!zombie.getMainHandItem().isEmpty() && !(zombie.getMainHandItem().getItem() instanceof BlockItem)) {
                 zombie.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
-                main = ItemStack.EMPTY;
             }
-            if (!off.isEmpty() && !(off.getItem() instanceof BlockItem)) {
+            if (!zombie.getOffhandItem().isEmpty() && !(zombie.getOffhandItem().getItem() instanceof BlockItem)) {
                 zombie.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
             }
             // the block-carriers of the horde
             var held = ZTConfig.heldBlocks();
-            if (main.isEmpty() && !held.isEmpty()
-                    && zombie.getRandom().nextFloat() < snap.heldBlockChance) {
+            if (zombie.getMainHandItem().isEmpty() && !held.isEmpty()
+                    && zombie.getRandom().nextFloat() < ZTConfig.Z_HELD_BLOCK_CHANCE.get()) {
                 zombie.setItemSlot(EquipmentSlot.MAINHAND,
                         new ItemStack(held.get(zombie.getRandom().nextInt(held.size()))));
                 zombie.setDropChance(EquipmentSlot.MAINHAND, 0.05F);
@@ -91,15 +85,15 @@ public final class ZombieMutation {
     }
 
     // ------------------------------------------------------------------ flesh
-    private static void applyAttributes(Zombie zombie, int wave, boolean waveActive, ZTSnapshot snap) {
-        setBase(zombie, Attributes.MOVEMENT_SPEED, snap.speedFor(wave, waveActive));
-        setBase(zombie, Attributes.FOLLOW_RANGE, snap.followFor(wave, waveActive));
+    private static void applyAttributes(Zombie zombie, int wave, boolean waveActive) {
+        setBase(zombie, Attributes.MOVEMENT_SPEED, ZTConfig.zombieSpeed(wave, waveActive));
+        setBase(zombie, Attributes.FOLLOW_RANGE, ZTConfig.followRange(wave, waveActive));
 
         // ---- damage: grows with the waves, never breaches the 2-heart law ----
         AttributeInstance damage = zombie.getAttribute(Attributes.ATTACK_DAMAGE);
-        double cap = snap.maxDamage;
+        double cap = ZTConfig.maxZombieDamage();
         if (damage != null) {
-            double desired = snap.attackFor(wave);
+            double desired = ZTConfig.zombieAttackDamage(wave);
             if (damage.getBaseValue() > cap) damage.setBaseValue(cap);
             else if (desired > damage.getBaseValue()) damage.setBaseValue(desired);
         }
@@ -107,16 +101,11 @@ public final class ZombieMutation {
         // ---- flesh: beefier every wave, but NEVER more than player + 5 hearts ----
         AttributeInstance health = zombie.getAttribute(Attributes.MAX_HEALTH);
         if (health != null) {
-            // the victim's real max health is the yardstick. The zombie's own target is a
-            // one-field read; only untargeted ghouls take the wider (player-list) fallback.
+            // the victim's real max health is the yardstick (fallback: vanilla 10 hearts)
             double playerRef = 20.0D;
-            if (zombie.getTarget() instanceof Player prey) {
-                playerRef = prey.getMaxHealth();
-            } else {
-                Player ref = levelNearestPlayer(zombie);
-                if (ref != null) playerRef = ref.getMaxHealth();
-            }
-            double newMax = snap.healthFor(wave, playerRef);
+            Player ref = zombie.level().getNearestPlayer(zombie, 64.0D);
+            if (ref != null) playerRef = ref.getMaxHealth();
+            double newMax = ZTConfig.zombieHealth(wave, playerRef);
             double oldMax = health.getBaseValue();
             if (newMax != oldMax) {
                 boolean wasHealthy = zombie.getHealth() >= (float) oldMax - 0.01F;
@@ -127,24 +116,15 @@ public final class ZombieMutation {
             }
         }
 
-        setBase(zombie, Attributes.SPAWN_REINFORCEMENTS_CHANCE, snap.reinforcementsFor(wave, waveActive));
-        setBase(zombie, Attributes.KNOCKBACK_RESISTANCE, waveActive ? snap.kbrFor(wave) : 0.0D);
-    }
+        int fromWave = ZTConfig.Z_REINFORCEMENT_FROM_WAVE.get();
+        double reinforcements = wave >= fromWave
+                ? Math.min(ZTConfig.Z_REINFORCEMENT_CAP.get(),
+                        (0.1D + wave * ZTConfig.Z_REINFORCEMENT_PER_WAVE.get()) * (waveActive ? 1.0D + 0.5D * ZTConfig.frenzy() : 1.0D))
+                : 0.1D; // vanilla default
+        setBase(zombie, Attributes.SPAWN_REINFORCEMENTS_CHANCE, reinforcements);
 
-    /**
-     * Nearest player fallback without vanilla's nearest-entity search: the player list of
-     * a dimension is tiny (usually size 1), so walking it directly beats the spatial
-     * machinery {@code level.getNearestPlayer} spins up for every mutation.
-     */
-    @org.jetbrains.annotations.Nullable
-    private static Player levelNearestPlayer(Zombie zombie) {
-        Player best = null;
-        double bestDist = Double.MAX_VALUE;
-        for (Player player : zombie.level().players()) {
-            double dist = player.distanceToSqr(zombie);
-            if (dist < bestDist) { bestDist = dist; best = player; }
-        }
-        return bestDist <= 64.0D * 64.0D ? best : null;
+        double kbr = waveActive ? Math.min(0.4D, wave * ZTConfig.Z_KBR_PER_WAVE.get() * ZTConfig.frenzy()) : 0.0D;
+        setBase(zombie, Attributes.KNOCKBACK_RESISTANCE, kbr);
     }
 
     private static void setBase(Zombie zombie, net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attr, double value) {
@@ -155,21 +135,21 @@ public final class ZombieMutation {
     }
 
     // ------------------------------------------------------------------ brain
-    private static void applyBrain(Zombie zombie, int wave, boolean waveActive, ZTSnapshot snap) {
+    private static void applyBrain(Zombie zombie, int wave, boolean waveActive) {
         ensureHuntGoal(zombie);
 
         boolean firstTouch = !zombie.getData(ZTAttachments.WAVE_TAGGED);
         if (firstTouch) {
             zombie.setData(ZTAttachments.WAVE_TAGGED, true);
             // one lifetime roll per zombie: is it one of the wall-chewers?
-            if (snap.breacherGateFor(wave)
-                    && zombie.getRandom().nextFloat() < snap.blockBreakChance) {
+            if (wave >= ZTConfig.Z_BLOCK_BREAK_FROM_WAVE.get()
+                    && zombie.getRandom().nextFloat() < ZTConfig.Z_BLOCK_BREAK_CHANCE.get()) {
                 ensureBlockBreakGoal(zombie);
             }
         }
 
         // mid-wave the horde ignores the sun entirely
-        if (waveActive && snap.noBurnInWaves) {
+        if (waveActive && ZTConfig.Z_NO_BURN_IN_WAVES.get()) {
             removeSunGoals(zombie);
         } else {
             restoreSunGoals(zombie);
@@ -215,20 +195,13 @@ public final class ZombieMutation {
 
     /** Re-applies the doctrine to every loaded zombie (wave start/end, resets, config surgery). */
     public static void sweep(MinecraftServer server) {
-        if (WaveManager.overworldOnly()) {
-            sweepLevel(server.overworld()); // default case: no dimension set to walk
-            return;
-        }
         for (var key : ZTConfig.dimensions()) {
             ServerLevel level = server.getLevel(key);
-            if (level != null) sweepLevel(level);
-        }
-    }
-
-    private static void sweepLevel(ServerLevel level) {
-        for (var player : level.players()) {
-            for (Zombie zombie : level.getEntitiesOfClass(Zombie.class, player.getBoundingBox().inflate(160.0D))) {
-                apply(zombie, false);
+            if (level == null) continue;
+            for (var player : level.players()) {
+                for (Zombie zombie : level.getEntitiesOfClass(Zombie.class, player.getBoundingBox().inflate(160.0D))) {
+                    apply(zombie, false);
+                }
             }
         }
     }

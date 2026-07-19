@@ -3,7 +3,6 @@ package dev.file233.zombietide.zombie;
 import org.jetbrains.annotations.Nullable;
 
 import dev.file233.zombietide.config.ZTConfig;
-import dev.file233.zombietide.config.ZTSnapshot;
 import dev.file233.zombietide.wave.WaveManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -15,6 +14,7 @@ import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Wall-chewer behaviour granted to a share of zombies from wave 20 onward.
@@ -24,15 +24,8 @@ import net.minecraft.world.level.block.state.BlockState;
  * crack-progress particles/particles sound, and keeps going. Pure vanilla mechanics
  * (mimics a player mining, obeys {@code mobGriefing}), no fake physics — it just never
  * stops. A door, a window, a wooden wall: allus just delays.
- *
- * <p><b>Performance:</b> the 2Hz wall scans reuse one mutable scratch position (no
- * BlockPos/Vec3 churn), hardness gates come from the snapshot, and the blacklist set is
- * only consulted after every cheaper test has passed.
  */
 public class BlockBreakGoal extends Goal {
-    /** Vertical probe order: feet level, head level, ceiling, floor — mirrors the old fixed candidates. */
-    private static final int[] SCAN_OFFSETS = {0, 1, 2, -1};
-
     private final Zombie mob;
     @Nullable
     private BlockPos targetPos;
@@ -41,8 +34,6 @@ public class BlockBreakGoal extends Goal {
     private int lastStage = -1;
     private int cooldown;
     private final int stagger;
-    /** Scratch for scan probes — never escapes (winners are copied via {@link BlockPos#immutable()}). */
-    private final BlockPos.MutableBlockPos scratch = new BlockPos.MutableBlockPos();
 
     public BlockBreakGoal(Zombie mob) {
         this.mob = mob;
@@ -54,12 +45,9 @@ public class BlockBreakGoal extends Goal {
         if (!(mob.level() instanceof ServerLevel)) return false;
         if (cooldown > 0) { cooldown--; return false; }
         if ((mob.tickCount + stagger) % 10 != 0) return false; // scan at 2Hz, staggered
-        ZTSnapshot snap = ZTSnapshot.get();
-        if (!snap.enabled) return false;
+        if (!ZTConfig.enabled()) return false;
         if (!ZTConfig.dimensionAllowed(mob.level().dimension())) return false;
-        int wave = WaveManager.currentWave();
-        if (!snap.breacherGateFor(wave)) return false;
-        if (snap.blockBreakOnlyWaves && !WaveManager.isWaveActive()) return false;
+        if (!ZTConfig.blockBreakingAllowedNow(WaveManager.currentWave(), WaveManager.isWaveActive())) return false;
         if (!mob.level().getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING)) return false;
 
         LivingEntity prey = mob.getTarget();
@@ -67,7 +55,7 @@ public class BlockBreakGoal extends Goal {
         // navigation gave up → something physical is between the zombie and dinner
         if (!mob.getNavigation().isDone() && mob.distanceToSqr(prey) < 9.0D) return false;
 
-        BlockPos candidate = findBreakableToward(prey, snap);
+        BlockPos candidate = findBreakableToward(prey);
         if (candidate == null) return false;
         this.targetPos = candidate;
         this.needTicks = ticksFor(stateAt(candidate));
@@ -79,7 +67,7 @@ public class BlockBreakGoal extends Goal {
         if (targetPos == null) return false;
         LivingEntity prey = mob.getTarget();
         if (prey == null || !prey.isAlive()) return false;
-        return isBreakable(targetPos, ZTSnapshot.get());
+        return isBreakable(targetPos);
     }
 
     @Override
@@ -96,19 +84,15 @@ public class BlockBreakGoal extends Goal {
     @Override
     public void tick() {
         if (targetPos == null || !(mob.level() instanceof ServerLevel server)) return;
-        // fixed point of the block's center — no Vec3 allocation per tick
-        double cx = targetPos.getX() + 0.5D;
-        double cy = targetPos.getY() + 0.5D;
-        double cz = targetPos.getZ() + 0.5D;
-        double dx = mob.getX() - cx, dy = mob.getY() - cy, dz = mob.getZ() - cz;
+        Vec3 center = targetPos.getCenter();
 
         // stroll into chewing range, then stay planted
-        if (dx * dx + dy * dy + dz * dz > 2.6D) {
-            mob.getNavigation().moveTo(cx, cy, cz, 1.0D);
+        if (mob.distanceToSqr(center) > 2.6D) {
+            mob.getNavigation().moveTo(center.x, center.y, center.z, 1.0D);
         } else {
             mob.getNavigation().stop();
         }
-        mob.getLookControl().setLookAt(cx, cy, cz);
+        mob.getLookControl().setLookAt(center);
 
         digTicks++;
         if (digTicks % 5 == 0) mob.swing(InteractionHand.MAIN_HAND);
@@ -130,7 +114,7 @@ public class BlockBreakGoal extends Goal {
             BlockState done = server.getBlockState(targetPos);
             server.levelEvent(2001, targetPos, Block.getId(done)); // particles + break sound
             server.destroyBlock(targetPos, false, mob);            // no drops: apocalypse, not a quarry
-            cooldown = ZTSnapshot.get().blockBreakCooldown;
+            cooldown = ZTConfig.Z_BLOCK_BREAK_COOLDOWN.get();
             targetPos = null;
         }
     }
@@ -146,38 +130,33 @@ public class BlockBreakGoal extends Goal {
 
     // ------------------------------------------------------------------ selection
     @Nullable
-    private BlockPos findBreakableToward(LivingEntity prey, ZTSnapshot snap) {
-        double dirX = prey.getX() - mob.getX();
-        double dirZ = prey.getZ() - mob.getZ();
-        double lenSq = dirX * dirX + dirZ * dirZ;
-        if (lenSq < 1.0E-4D) return null;
-        double invLen = 1.0D / Math.sqrt(lenSq);
-        dirX *= invLen;
-        dirZ *= invLen;
+    private BlockPos findBreakableToward(LivingEntity prey) {
+        Vec3 dir = prey.position().subtract(mob.position());
+        dir = new Vec3(dir.x, 0.0D, dir.z);
+        if (dir.lengthSqr() < 1.0E-4D) return null;
+        dir = dir.normalize();
 
-        int bx = Mth.floor(mob.getX() + dirX * 1.6D);
-        int by = Mth.floor(mob.getY());
-        int bz = Mth.floor(mob.getZ() + dirZ * 1.6D);
-        for (int offset : SCAN_OFFSETS) {
-            scratch.set(bx, by + offset, bz);
-            if (isBreakable(scratch, snap)) return scratch.immutable();
+        BlockPos base = BlockPos.containing(
+                mob.getX() + dir.x * 1.6D, mob.getY(), mob.getZ() + dir.z * 1.6D);
+        BlockPos[] candidates = { base, base.above(), base.above(2), base.below() };
+        for (BlockPos pos : candidates) {
+            if (isBreakable(pos)) return pos;
         }
         // prey hugging the wall: chew the block they lean on
         if (mob.distanceToSqr(prey) <= 12.0D) {
             BlockPos preyPos = prey.blockPosition();
-            if (isBreakable(preyPos, snap)) return preyPos;
-            BlockPos above = preyPos.above();
-            if (isBreakable(above, snap)) return above;
+            if (isBreakable(preyPos)) return preyPos;
+            if (isBreakable(preyPos.above())) return preyPos.above();
         }
         return null;
     }
 
-    private boolean isBreakable(BlockPos pos, ZTSnapshot snap) {
+    private boolean isBreakable(BlockPos pos) {
         BlockState state = mob.level().getBlockState(pos);
         if (state.isAir() || state.liquid()) return false;
         float hardness = state.getDestroySpeed(mob.level(), pos);
         if (hardness < 0.0F) return false; // bedrock & friends
-        if (hardness > snap.blockBreakMaxHardness) return false;
+        if (hardness > ZTConfig.Z_BLOCK_BREAK_MAX_HARDNESS.get()) return false;
         return !ZTConfig.breakBlacklist().contains(state.getBlock());
     }
 

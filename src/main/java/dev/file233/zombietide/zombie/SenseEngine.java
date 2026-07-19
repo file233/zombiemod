@@ -3,7 +3,6 @@ package dev.file233.zombietide.zombie;
 import org.jetbrains.annotations.Nullable;
 
 import dev.file233.zombietide.config.ZTConfig;
-import dev.file233.zombietide.config.ZTSnapshot;
 import dev.file233.zombietide.registry.ZTAttachments;
 import dev.file233.zombietide.wave.WaveManager;
 import net.minecraft.server.level.ServerLevel;
@@ -52,10 +51,9 @@ public final class SenseEngine {
     // ------------------------------------------------------------------ movement noise (server side)
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        ZTSnapshot snap = ZTSnapshot.get();
-        if (!snap.enabled) return;
+        if (!ZTConfig.enabled()) return;
         if ((player.tickCount & 7) != 2) return; // sampled at 2.5 Hz
-        if (!huntable(snap, player)) return; // creative prey rustles too (if enabled)
+        if (!ZTConfig.isHuntable(player)) return; // creative prey rustles too (if enabled)
 
         double loudness;
         if (player.isSprinting() && player.onGround()) loudness = LOUD_SPRINT;
@@ -135,20 +133,18 @@ public final class SenseEngine {
      * without a target will lock onto them, or otherwise converge on the echo itself.
      */
     public static void alert(ServerLevel level, Vec3 pos, double relativeRadius, @Nullable Player culprit) {
-        ZTSnapshot snap = ZTSnapshot.get();
-        if (!snap.enabled) return;
+        if (!ZTConfig.enabled()) return;
         if (!ZTConfig.dimensionAllowed(level.dimension())) return;
 
-        int wave = WaveManager.currentWave();
-        boolean active = WaveManager.isWaveActive();
-        double radius = Math.min(160.0D, snap.hearingFor(wave, active) * relativeRadius);
+        double radius = Math.min(160.0D,
+                ZTConfig.hearingRadius(WaveManager.currentWave(), WaveManager.isWaveActive()) * relativeRadius);
         if (radius < 1.0D) return;
 
         AABB box = new AABB(
                 pos.x - radius, pos.y - radius * 0.75D, pos.z - radius,
                 pos.x + radius, pos.y + radius * 0.75D, pos.z + radius);
         long now = level.getGameTime();
-        int cooldownTicks = snap.noiseTicksFor(wave, active);
+        int cooldownTicks = ZTConfig.noiseCooldownTicks(WaveManager.currentWave(), WaveManager.isWaveActive());
 
         for (Zombie zombie : level.getEntitiesOfClass(Zombie.class, box)) {
             if (zombie.distanceToSqr(pos) > radius * radius) continue;
@@ -157,7 +153,7 @@ public final class SenseEngine {
             zombie.setData(ZTAttachments.NOISE_COOLDOWN, now);
 
             if (zombie.getTarget() == null) {
-                if (culprit != null && huntable(snap, culprit)) {
+                if (culprit != null && ZTConfig.isHuntable(culprit)) {
                     zombie.setTarget(culprit);
                     zombie.setAggressive(true);
                 } else {
@@ -165,13 +161,5 @@ public final class SenseEngine {
                 }
             }
         }
-    }
-
-    /** Snapshot-fast hunting whitelist — identical semantics to {@link ZTConfig#isHuntable}. */
-    private static boolean huntable(ZTSnapshot snap, Player player) {
-        if (!player.isAlive()) return false;
-        if (player.isSpectator()) return snap.targetSpectators;
-        if (player.isCreative()) return snap.targetCreative;
-        return true;
     }
 }

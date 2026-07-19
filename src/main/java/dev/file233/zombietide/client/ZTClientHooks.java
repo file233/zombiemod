@@ -11,6 +11,5 @@ public final class ZTClientHooks {
 
     public static void handleWaveSync(WaveSyncPayload payload) {
         ZTClientState.apply(payload);
-        ZTHudLayer.INSTANCE.invalidate(); // repaint strings immediately on every server heartbeat
     }
 }

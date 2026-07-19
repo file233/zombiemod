@@ -44,6 +44,7 @@
   "zombietide.configuration.maxWaves": "Total waves",
   "zombietide.configuration.firstWaveMinutes": "First wave duration (minutes)",
   "zombietide.configuration.waveIncrementMinutes": "+Minutes per wave",
+  "zombietide.configuration.calmMinutes": "Peace between waves (minutes)",
   "zombietide.configuration.alarmSeconds": "Alarm length (seconds)",
   "zombietide.configuration.alarmSound": "Alarm sound id",
   "zombietide.configuration.alarmVolume": "Alarm volume",
@@ -117,7 +118,7 @@
   "zombietide.configuration.client.damageOverlay": "Red Damage Fog",
   "zombietide.configuration.client.intensity": "Fog intensity",
   "zombietide.configuration.client.maxAlpha": "Fog max opacity",
-  "command.zombietide.interval.header": "Calm gap: default %ss for every wave (per-wave overrides below):",
+  "command.zombietide.interval.header": "Calm gap = %s min (+%s min per wave); per-wave overrides:",
   "command.zombietide.interval.none": " (none - the formula applies to every wave)",
   "command.zombietide.interval.override_line": " - wave %s -> %s",
   "command.zombietide.interval.hint": "Use /zombietide interval <wave> [seconds|clear]",
@@ -134,6 +135,7 @@
   "zombietide.configuration.targeting": "Targeting & Pursuit",
   "zombietide.configuration.targetCreativePlayers": "Chase creative players",
   "zombietide.configuration.targetSpectators": "Chase spectators",
+  "zombietide.configuration.calmMinutesPerWave": "+Peace minutes per wave",
   "zombietide.configuration.intervalOverrides": "Per-wave peace overrides",
   "zombietide.configuration.durationOverrides": "Per-wave length overrides",
   "zombietide.configuration.alarmPitch": "Alarm pitch",
@@ -144,6 +146,8 @@
   "zombietide.configuration.pressureCreativePlayers": "Besiege creative players",
   "zombietide.configuration.amplifier": "Effect amplifier (I+)",
   "zombietide.configuration.client.fadePerTick": "Blood fade per tick",
+  "zombietide.configuration.client.blurPasses": "Blood blur passes",
+  "zombietide.configuration.client.splatterVariants": "Random blood splatters",
   "command.zombietide.status.mind_active": "Mind: intelligence x%s | frenzy x%s (RAGE ON)",
   "command.zombietide.status.mind_calm": "Mind: intelligence x%s | frenzy x%s (dormant between waves)",
   "zombietide.configuration.intelligence": "Zombie Intelligence",
@@ -157,8 +161,5 @@
   "zombietide.configuration.frenzySpeedBoost": "Frenzy speed boost",
   "zombietide.configuration.frenzyHearingBonus": "Frenzy hearing bonus",
   "zombietide.configuration.frenzyNoiseFactor": "Frenzy reaction factor",
-  "zombietide.configuration.daySpawnFactor": "Day spawn factor (vs night)",
-  "zombietide.configuration.client.dropletCount": "Droplets per full hit",
-  "zombietide.configuration.client.dropletSize": "Droplet size (px)",
-  "zombietide.configuration.client.dropletSpread": "Droplet scatter (px)"
+  "zombietide.configuration.daySpawnFactor": "Day spawn factor (vs night)"
 }

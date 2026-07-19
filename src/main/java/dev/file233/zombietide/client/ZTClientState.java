@@ -20,10 +20,11 @@ public final class ZTClientState {
 
     public static boolean waveActive() { return phase == 1; }
 
-    // ---- trauma (blood pixel-droplets) ----
+    // ---- trauma (blood splatter) ----
+    public static final int SPLATTER_VARIANTS = 3;
     public static float trauma = 0.0F;
-    /** Random seed of the droplet pattern thrown at the screen by the latest hit. */
-    public static long splatterSeed = 1337L;
+    /** Which blood-splatter texture the latest hit threw at the screen. */
+    public static int splatterIndex = 0;
     private static float lastHealth = -1.0F;
 
     public static void apply(WaveSyncPayload payload) {
@@ -59,8 +60,10 @@ public final class ZTClientState {
             float lost = lastHealth - health;
             float max = Math.max(1.0F, player.getMaxHealth());
             trauma = Math.min(1.0F, trauma + (lost / max) * 1.8F * (float) ZTClientConfig.OVERLAY_INTENSITY.get().doubleValue());
-            // every hit throws a fresh sparse constellation of droplets
-            splatterSeed = player.getRandom().nextLong();
+            // a fresh splash of blood for every hit
+            splatterIndex = ZTClientConfig.OVERLAY_SPLATTER_VARIANTS.get()
+                    ? player.getRandom().nextInt(SPLATTER_VARIANTS)
+                    : 0;
             lastHealth = health;
         } else {
             lastHealth = health;
